@@ -42,7 +42,7 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/EastSeaO/procurement-system.git
+git clone https://github.com/eastseao/procurement-system.git
 cd procurement-system
 ```
 
@@ -61,7 +61,7 @@ python main.py
 ### 4. 打包为 EXE（可选）
 
 ```bash
-pyinstaller 采购助手V1.3.spec
+pyinstaller 采购助手V1.7.spec
 ```
 
 ---
@@ -73,7 +73,7 @@ pyinstaller 采购助手V1.3.spec
 ├── database.py              # 数据库层（15张表CRUD、迁移、导出）
 ├── version.py               # 版本管理（自动检查GitHub更新）
 ├── requirements.txt         # Python依赖清单
-├── 采购助手V1.3.spec         # PyInstaller打包配置
+├── 采购助手V1.7.spec         # PyInstaller打包配置
 ├── pages/                   # 页面模块
 │   ├── dashboard_page.py    # 仪表盘
 │   ├── packaging_page.py    # 物料下单
@@ -136,7 +136,7 @@ git tag v1.5.1
 git push origin main --tags
 
 # 3. 在 GitHub 上创建 Release
-# 前往 https://github.com/EastSeaO/procurement-system/releases
+# 前往 https://github.com/eastseao/procurement-system/releases
 # 点击 "Create a new release"，选择标签 v1.5.1，填写更新日志
 ```
 

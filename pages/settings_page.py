@@ -629,7 +629,7 @@ class SettingsPage(ctk.CTkFrame):
         ).pack(anchor="w", padx=14, pady=(10, 2))
 
         repo_btn = ctk.CTkButton(
-            github_frame, text="EastSeaO / procurement-system",
+            github_frame, text="eastseao / procurement-system",
             width=280, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),

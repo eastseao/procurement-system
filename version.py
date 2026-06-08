@@ -18,7 +18,7 @@ __version_date__ = "2026-06-08"
 # ═══════════════════════════════════════════════════════
 # GitHub 仓库信息（上传后请修改为你的实际仓库地址）
 # ═══════════════════════════════════════════════════════
-GITHUB_USER = "EastSeaO"           # ← 替换为你的 GitHub 用户名
+GITHUB_USER = "eastseao"           # ← GitHub 用户名（全小写）
 GITHUB_REPO = "procurement-system"  # ← 替换为你的仓库名
 
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/releases/latest"
