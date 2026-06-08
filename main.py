@@ -57,8 +57,6 @@ from pages.memo_page import MemoPage
 from pages.quotation_page import QuotationPage
 from pages.dashboard_page import DashboardPage
 from pages.settings_page import SettingsPage, load_settings
-from pages.tangxun_page import TangxunPage
-from pages.group_intro_page import GroupIntroPage
 
 # ── pystray 系统托盘 ──
 try:
@@ -108,7 +106,7 @@ def _get_resource_path(rel_path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), rel_path)
 
 
-ICO_PATH  = _get_resource_path("assets/同仁堂企业LOGO2.png")
+ICO_PATH  = _get_resource_path("assets/同仁堂企业LOGO.ico")
 COLLAPSE_ICON_PATH = _get_resource_path("assets/icon_collapse.png")
 EXPAND_ICON_PATH   = _get_resource_path("assets/icon_expand.png")
 LOGO_PATH          = _get_resource_path("assets/logo_40x40.png")
@@ -167,15 +165,13 @@ class App(ctk.CTk):
         self.minsize(1100, 700)
         self.configure(fg_color=COLORS["bg"])
 
-        # 设置程序图标（使用 iconphoto 支持 PNG）
-        if os.path.exists(ICO_PATH):
+        # 设置程序图标（标题栏左侧）
+        logo_icon_path = _get_resource_path("assets/logo_40x40.png")
+        if os.path.exists(logo_icon_path) and PIL_AVAILABLE:
             try:
-                if PIL_AVAILABLE:
-                    icon_img = Image.open(ICO_PATH)
-                    self.icon_photo = ImageTk.PhotoImage(icon_img)
-                    self.iconphoto(True, self.icon_photo)
-                else:
-                    self.iconbitmap(ICO_PATH)
+                icon_img = Image.open(logo_icon_path)
+                self._icon_photo = ImageTk.PhotoImage(icon_img)
+                self.iconphoto(True, self._icon_photo)
             except Exception:
                 pass
 
@@ -385,24 +381,6 @@ class App(ctk.CTk):
                 else:
                     self._nav_icon_images[key] = None
 
-        # ── Logo（置顶按钮下方居中，点击打开集团介绍页）─────────────────────
-        logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=48)
-        logo_frame.pack(side="top", fill="x", padx=0, pady=(0, 4))
-        logo_frame.pack_propagate(False)
-        if PIL_AVAILABLE and os.path.exists(LOGO_PATH):
-            try:
-                self._logo_image = ctk.CTkImage(
-                    light_image=Image.open(LOGO_PATH), size=(40, 40))
-                self.logo_btn = ctk.CTkLabel(
-                    logo_frame, image=self._logo_image, text="",
-                    fg_color="transparent", cursor="hand2",
-                )
-                self.logo_btn.pack(expand=True)
-                self.logo_btn.bind("<Button-1>", lambda e: self._open_group_intro())
-                _add_tooltip(self.logo_btn, "同仁堂集团介绍")
-            except Exception:
-                pass
-
         # ── 导航按钮区域（均匀分布）─────────────────────
         self.nav_area = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.nav_area.pack(side="top", fill="both", expand=True)
@@ -515,8 +493,6 @@ class App(ctk.CTk):
             self.current_page = TangxunPage(self.main_area, self.db, COLORS)
         elif key == "settings":
             self.current_page = SettingsPage(self.main_area, self.db, COLORS)
-        elif key == "group_intro":
-            self.current_page = GroupIntroPage(self.main_area, self.db, COLORS)
 
         if self.current_page:
             self.current_page.pack(fill="both", expand=True)
@@ -533,13 +509,6 @@ class App(ctk.CTk):
             text_color=COLORS["sidebar_active_text"],
         )
 
-    def _open_group_intro(self):
-        """打开同仁堂集团介绍页面（内置）"""
-        # 取消所有导航按钮高亮
-        for k, btn in self.nav_buttons.items():
-            btn.configure(fg_color="transparent", text_color=COLORS["sidebar_text"])
-        self.settings_btn.configure(fg_color="transparent", text_color=COLORS["sidebar_text"])
-        self._switch_page("group_intro")
 
 
 

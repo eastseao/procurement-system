@@ -7,7 +7,7 @@ block_cipher = None
 
 added_files = [
     ('assets/logo_40x40.png', 'assets'),
-    ('assets/同仁堂企业LOGO2.png', 'assets'),
+    ('assets/同仁堂企业LOGO.ico', 'assets'),
     ('assets/icon_collapse.png', 'assets'),
     ('assets/icon_expand.png', 'assets'),
     ('assets/同仁堂集团组织架构3.0.html', 'assets'),
@@ -71,5 +71,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/同仁堂企业LOGO2.ico',
+    icon='assets/同仁堂企业LOGO.ico',
 )
