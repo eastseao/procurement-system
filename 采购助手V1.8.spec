@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# 采购管理系统 V1.7 PyInstaller 打包配置
+# 采购管理系统 V1.8 PyInstaller 打包配置
 from PyInstaller.utils.hooks import collect_all
 
 datas = []
@@ -19,6 +19,7 @@ datas += [
     ('assets/logo_40x40.png', 'assets'),
     ('assets/产品包装报价单_模板.xlsx', 'assets'),
     ('assets/物料查询导入模板.csv', 'assets'),
+    ('assets/同仁堂集团组织架构3.0.html', 'assets'),
     # 导航栏图标
     ('assets/nav_dashboard.png', 'assets'),
     ('assets/nav_packaging.png', 'assets'),

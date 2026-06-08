@@ -400,7 +400,7 @@ class App(ctk.CTk):
         self.pin_btn.pack(padx=8, pady=4, expand=True)
         _add_tooltip(self.pin_btn, "固定窗口到最前")
 
-        # ── Logo（置顶按钮下方居中，点击跳转堂训页）─────────────────────
+        # ── Logo（置顶按钮下方居中，点击打开集团介绍页）─────────────────────
         logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=48)
         logo_frame.pack(side="top", fill="x", padx=0, pady=(0, 4))
         logo_frame.pack_propagate(False)
@@ -413,8 +413,8 @@ class App(ctk.CTk):
                     fg_color="transparent", cursor="hand2",
                 )
                 self.logo_btn.pack(expand=True)
-                self.logo_btn.bind("<Button-1>", lambda e: self._switch_page("tangxun"))
-                _add_tooltip(self.logo_btn, "同仁堂堂训")
+                self.logo_btn.bind("<Button-1>", lambda e: self._open_group_intro())
+                _add_tooltip(self.logo_btn, "同仁堂集团介绍")
             except Exception:
                 pass
 
@@ -545,6 +545,21 @@ class App(ctk.CTk):
             fg_color=COLORS["sidebar_active"],
             text_color=COLORS["sidebar_active_text"],
         )
+
+    def _open_group_intro(self):
+        """打开同仁堂集团介绍页面"""
+        # 集团介绍HTML文件路径
+        group_intro_path = _get_resource_path("assets/同仁堂集团组织架构3.0.html")
+        
+        # 如果打包后的资源中没有，则使用绝对路径
+        if not os.path.exists(group_intro_path):
+            group_intro_path = r"I:\采购管理系统\同仁堂集团组织架构3.0.html"
+        
+        # 如果文件存在，则在默认浏览器中打开
+        if os.path.exists(group_intro_path):
+            webbrowser.open(f"file://{os.path.abspath(group_intro_path)}")
+        else:
+            messagebox.showwarning("提示", "找不到集团介绍页面文件")
 
 
 

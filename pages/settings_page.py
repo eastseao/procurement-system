@@ -151,7 +151,7 @@ SETTING_CATEGORIES = [
     ("数据管理", "💾"),
     ("启动设置", "🚀"),
     ("系统设置", "⚙️"),
-    ("版本介绍", "ℹ️"),
+    ("软件介绍", "ℹ️"),
     ("关于作者", "✍️"),
 ]
 
@@ -243,7 +243,7 @@ class SettingsPage(ctk.CTkFrame):
             self._build_startup()
         elif category == "系统设置":
             self._build_system()
-        elif category == "版本介绍":
+        elif category == "软件介绍":
             self._build_version_info()
         elif category == "关于作者":
             self._build_about_author()
@@ -395,13 +395,13 @@ class SettingsPage(ctk.CTkFrame):
         self._add_save_button()
 
     def _build_version_info(self):
-        """构建版本介绍内容"""
+        """构建软件介绍内容"""
         card = ctk.CTkFrame(self._right_content, fg_color=self.C["card"], corner_radius=10)
         card.pack(fill="x", pady=(0, 12))
 
         # ── 标题栏 ──────────────────────────────
         ctk.CTkLabel(
-            card, text="采购助手 · 版本介绍",
+            card, text="采购助手 · 软件介绍",
             font=ctk.CTkFont(family="Microsoft YaHei", size=18, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(20, 10))
@@ -478,6 +478,27 @@ class SettingsPage(ctk.CTkFrame):
             "新增供应商文本筛选、项目号验证、下单数量字段",
         ]
         for item in v17_updates:
+            ctk.CTkLabel(
+                card, text=f"  • {item}",
+                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                text_color=self.C["text_secondary"],
+                justify="left", anchor="w",
+            ).pack(fill="x", padx=24, pady=(0, 2))
+
+        # ── V1.8 版本更新 ───────────────────────
+        ctk.CTkLabel(
+            card, text="V1.8 更新内容",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(anchor="w", padx=20, pady=(14, 6))
+
+        v18_updates = [
+            "导航栏logo点击打开同仁堂集团介绍页面",
+            "报价单页面内置报价单模板",
+            "设置页面「版本介绍」改为「软件介绍」",
+            "优化用户界面和交互体验",
+        ]
+        for item in v18_updates:
             ctk.CTkLabel(
                 card, text=f"  • {item}",
                 font=ctk.CTkFont(family="Microsoft YaHei", size=12),
