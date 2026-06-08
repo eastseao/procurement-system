@@ -3,7 +3,7 @@
 """
 采购管理系统 - 主入口
 功能：物料下单、物料查询、供应商管理、催款记录、采购垫付、差旅报销、备忘录、设置
-V1.7 更新：版本介绍接入 GitHub、完善作者信息、检查更新按钮、物料下单新增供应商/项目号筛选
+V1.8.2 修复：_on_closing 崩溃、精简 _toggle_compact、更新应用图标
 """
 
 import sys
@@ -107,7 +107,7 @@ def _get_resource_path(rel_path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), rel_path)
 
 
-ICO_PATH  = _get_resource_path("assets/同仁堂企业LOGO2.ico")
+ICO_PATH  = _get_resource_path("assets/同仁堂企业LOGO.png")
 COLLAPSE_ICON_PATH = _get_resource_path("assets/icon_collapse.png")
 EXPAND_ICON_PATH   = _get_resource_path("assets/icon_expand.png")
 LOGO_PATH          = _get_resource_path("assets/logo_40x40.png")
@@ -167,10 +167,15 @@ class App(ctk.CTk):
         self.configure(fg_color=COLORS["bg"])
         self.overrideredirect(True)  # 移除原生标题栏
 
-        # 设置程序图标
+        # 设置程序图标（使用 iconphoto 支持 PNG）
         if os.path.exists(ICO_PATH):
             try:
-                self.iconbitmap(ICO_PATH)
+                if PIL_AVAILABLE:
+                    icon_img = Image.open(ICO_PATH)
+                    self.icon_photo = ImageTk.PhotoImage(icon_img)
+                    self.iconphoto(True, self.icon_photo)
+                else:
+                    self.iconbitmap(ICO_PATH)
             except Exception:
                 pass
 
@@ -194,9 +199,6 @@ class App(ctk.CTk):
 
         # ── 拦截关闭事件 ──
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
-
-        # ── 设置标题栏配色（延迟执行，确保窗口已映射）──
-        self.after(200, self._set_titlebar_color)
 
         # ── 版本更新检查（后台线程，不阻塞 UI）──
         self.after(800, self._check_version_updates)
@@ -582,8 +584,6 @@ class App(ctk.CTk):
             self.hamburger_btn.configure(image=self._expand_icon if self._expand_icon else None)
             self.hamburger_btn.pack_configure(padx=8, pady=(2, 10))
             _add_tooltip(self.hamburger_btn, "展开导航")
-            # 缩小置顶按钮
-            self.pin_btn.configure(text="📌", width=42, height=42, font=ctk.CTkFont(size=16))
         else:
             # 展开：图标在上，文字在下
             self.sidebar.configure(width=155)
@@ -603,8 +603,16 @@ class App(ctk.CTk):
             self.hamburger_btn.configure(image=self._collapse_icon if self._collapse_icon else None)
             self.hamburger_btn.pack_configure(padx=8, pady=(2, 10))
             _add_tooltip(self.hamburger_btn, "折叠导航")
-            # 恢复置顶按钮大小
-            self.pin_btn.configure(text="📌", width=60, height=60, font=ctk.CTkFont(size=22))
+
+    def _on_closing(self):
+        """窗口关闭回调：最小化到托盘或退出"""
+        if self._tray_enabled and PYSTRAY_AVAILABLE:
+            self._minimize_to_tray()
+        else:
+            self._quit_app()
+
+    def _minimize_to_tray(self):
+        """最小化到系统托盘"""
         if self._tray_icon is not None:
             return  # 已经在托盘中
 
