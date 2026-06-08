@@ -107,8 +107,6 @@ def _get_resource_path(rel_path):
 
 
 ICO_PATH  = _get_resource_path("assets/同仁堂企业LOGO.ico")
-COLLAPSE_ICON_PATH = _get_resource_path("assets/icon_collapse.png")
-EXPAND_ICON_PATH   = _get_resource_path("assets/icon_expand.png")
 LOGO_PATH          = _get_resource_path("assets/logo_40x40.png")
 
 # ── 导航栏图标路径 ──
@@ -183,7 +181,6 @@ class App(ctk.CTk):
 
         self.db = Database(_data_dir)
         self.current_page = None
-        self._nav_compact = False    # 汉堡包折叠：仅图标模式
 
         # ── 系统托盘状态 ──
         self._tray_enabled = settings.get("tray_enabled", "0") == "1"
@@ -342,7 +339,7 @@ class App(ctk.CTk):
     def _build_ui(self):
         # ── 侧边栏 ──────────────────────────────────────
         self.sidebar = ctk.CTkFrame(
-            self, width=155, fg_color=COLORS["sidebar"],
+            self, width=120, fg_color=COLORS["sidebar"],
             corner_radius=0, border_width=0
         )
         self.sidebar.pack(side="left", fill="y")
@@ -351,20 +348,6 @@ class App(ctk.CTk):
         # 右侧边线
         self.divider = tk.Frame(self, bg=COLORS["border"], width=1)
         self.divider.pack(side="left", fill="y")
-
-        # 加载折叠/展开图标
-        self._collapse_icon = None
-        self._expand_icon = None
-        if PIL_AVAILABLE:
-            try:
-                if os.path.exists(COLLAPSE_ICON_PATH):
-                    self._collapse_icon = ctk.CTkImage(
-                        light_image=Image.open(COLLAPSE_ICON_PATH), size=(24, 24))
-                if os.path.exists(EXPAND_ICON_PATH):
-                    self._expand_icon = ctk.CTkImage(
-                        light_image=Image.open(EXPAND_ICON_PATH), size=(24, 24))
-            except Exception:
-                pass
 
         # 加载导航栏图标（1.5版本原始彩色图标）
         self._nav_icon_images = {}
@@ -433,21 +416,6 @@ class App(ctk.CTk):
         )
         self.settings_btn.pack(fill="x", padx=8, pady=1, expand=True)
 
-        # ── 折叠按钮（侧边栏最底部）────────────────────
-        self.hamburger_btn = ctk.CTkButton(
-            self.sidebar,
-            text="",
-            image=self._collapse_icon if self._collapse_icon else None,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20),
-            fg_color="transparent",
-            text_color=COLORS["sidebar_text"],
-            hover_color=COLORS["sidebar_hover"],
-            height=48,
-            corner_radius=8,
-            command=self._toggle_compact,
-        )
-        self.hamburger_btn.pack(side="bottom", fill="x", padx=8, pady=(2, 10))
-        _add_tooltip(self.hamburger_btn, "折叠导航")
 
         # ── 主内容区域 ──
         self.main_area = ctk.CTkFrame(self, fg_color=COLORS["bg"], corner_radius=0)
@@ -512,58 +480,6 @@ class App(ctk.CTk):
 
 
 
-    # ── 汉堡包折叠导航 ─────────────────────────────────
-    _full_labels = {
-        "dashboard":  "仪表盘",        "packaging":  "物料下单",
-        "quotation":  "报价单",
-        "query":      "物料查询",
-        "supplier":   "供应商",
-        "collection": "催款记录",
-        "purchase":   "采购垫付",
-        "travel":     "差旅报销",
-        "memo":       "备忘录",
-    }
-
-    def _toggle_compact(self):
-        """切换导航栏：图标+文字(compound=top) ↔ 仅图标模式"""
-        self._nav_compact = not self._nav_compact
-        if self._nav_compact:
-            # 折叠：仅图标 + 适配图标宽度
-            self.sidebar.configure(width=46)
-            for key, btn in self.nav_buttons.items():
-                icon = self._nav_icon_images.get(key)
-                btn.configure(text="", image=icon, compound="center",
-                              width=26, height=36, anchor="center")
-                btn.pack_configure(padx=8, pady=1, expand=True)
-                _add_tooltip(btn, self._full_labels.get(key, key))
-            settings_icon = self._nav_icon_images.get("settings")
-            self.settings_btn.configure(text="", image=settings_icon, compound="center",
-                                        width=26, height=36, anchor="center")
-            self.settings_btn.pack_configure(padx=8, pady=1, expand=True)
-            _add_tooltip(self.settings_btn, "设置")
-            # 底部按钮 -> 展开图标
-            self.hamburger_btn.configure(image=self._expand_icon if self._expand_icon else None)
-            self.hamburger_btn.pack_configure(padx=8, pady=(2, 10))
-            _add_tooltip(self.hamburger_btn, "展开导航")
-        else:
-            # 展开：图标在上，文字在下
-            self.sidebar.configure(width=155)
-            for key, btn in self.nav_buttons.items():
-                label = self._full_labels.get(key, key)
-                icon = self._nav_icon_images.get(key)
-                btn.configure(text=label, image=icon, compound="top",
-                              height=58, anchor="center", width=None,
-                              font=ctk.CTkFont(family="Microsoft YaHei", size=12))
-                btn.pack_configure(padx=8, pady=1, expand=True)
-            settings_icon = self._nav_icon_images.get("settings")
-            self.settings_btn.configure(text="设置", image=settings_icon, compound="top",
-                                        height=58, anchor="center", width=None,
-                                        font=ctk.CTkFont(family="Microsoft YaHei", size=12))
-            self.settings_btn.pack_configure(padx=8, pady=1, expand=True)
-            # 底部按钮 -> 折叠图标
-            self.hamburger_btn.configure(image=self._collapse_icon if self._collapse_icon else None)
-            self.hamburger_btn.pack_configure(padx=8, pady=(2, 10))
-            _add_tooltip(self.hamburger_btn, "折叠导航")
 
     def _on_closing(self):
         """窗口关闭回调：最小化到托盘或退出"""

@@ -5,6 +5,9 @@
 import customtkinter as ctk
 import tkinter as tk
 from datetime import datetime
+import json
+import urllib.request
+import threading
 
 # 各模块莫兰迪色
 MODULE_COLORS = {
@@ -26,6 +29,7 @@ class DashboardPage(ctk.CTkFrame):
         self._value_labels = {}  # key -> label widget
         self._build_ui()
         self._load_data()
+        self._fetch_weather()
 
     # ── UI构建 ────────────────────────────────────
     def _build_ui(self):
@@ -56,17 +60,29 @@ class DashboardPage(ctk.CTkFrame):
             text_color="#F5F0EB",
         ).pack(anchor="w", pady=(4, 0))
 
-        # 右侧：更新时间
+        # 右侧：天气预报 + 更新时间
         right_col = ctk.CTkFrame(banner_inner, fg_color="transparent")
         right_col.pack(side="right", fill="y")
 
+        # 天气 + 时间 横向排列
+        wt_frame = ctk.CTkFrame(right_col, fg_color="transparent")
+        wt_frame.pack(side="right", pady=(10, 0))
+
+        self.weather_label = ctk.CTkLabel(
+            wt_frame,
+            text="🌤 天气获取中...",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            text_color="#F5F0EB",
+        )
+        self.weather_label.pack(side="left", padx=(0, 12))
+
         self.time_label = ctk.CTkLabel(
-            right_col,
+            wt_frame,
             text="",
             font=ctk.CTkFont(family="Microsoft YaHei", size=12),
             text_color="#F5F0EB",
         )
-        self.time_label.pack(side="bottom")
+        self.time_label.pack(side="left")
 
         # ── 主卡片网格 ──────────────────────────────
         content = ctk.CTkFrame(self, fg_color="transparent")
@@ -265,6 +281,45 @@ class DashboardPage(ctk.CTkFrame):
         """更新标签值"""
         if key in self._value_labels:
             self._value_labels[key].configure(text=value)
+
+
+    # ── 天气预报 ──────────────────────────────
+    def _fetch_weather(self):
+        """后台获取 IP 所在地天气预报（wttr.in，无需 API key）"""
+        def _worker():
+            try:
+                url = "http://wttr.in/?format=j1"
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "curl/7.0"},
+                )
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    current = data["current_condition"][0]
+                    area = data["nearest_area"][0]
+                    city = area.get("areaName", [{"value": "未知"}])[0]["value"]
+                    temp = current.get("temp_C", "N/A")
+                    desc = current.get("weatherDesc", [{"value": ""}])[0]["value"]
+                    emoji = self._weather_emoji(desc)
+                    weather_text = f"{emoji} {city} {temp}°C {desc}"
+                    self.after(0, lambda t=weather_text: self.weather_label.configure(text=t))
+            except Exception:
+                self.after(0, lambda: self.weather_label.configure(text="🌤 天气获取失败"))
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+
+    def _weather_emoji(code):
+        """根据 weatherCode 返回 emoji"""
+        if code in (113, 116):
+            return "☀️"
+        if code in (116, 119, 122):
+            return "☁️"
+        if code in (176, 263, 266, 293, 296, 299, 302, 305, 308, 311, 314, 317, 320, 323, 326, 329, 332, 335, 338):
+            return "🌧️"
+        if code in (200, 386, 389, 392, 395):
+            return "⛈️"
+        return "🌤️"
 
     def refresh(self):
         """刷新数据"""

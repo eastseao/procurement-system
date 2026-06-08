@@ -670,12 +670,12 @@ class SettingsPage(ctk.CTkFrame):
                     light_image=Image.open(wx_qr_path),
                     size=(150, 150))
                 wx_frame = ctk.CTkFrame(card, fg_color="transparent")
-                wx_frame.pack(pady=(10, 16))
+                wx_frame.pack(anchor="w", padx=24, pady=(10, 16))
                 
                 wx_label = ctk.CTkLabel(
                     wx_frame, image=wx_img, text="")
                 wx_label.image = wx_img  # 保持引用
-                wx_label.pack()
+                wx_label.pack(anchor="w")
                 
                 ctk.CTkLabel(
                     wx_frame, text="微信扫码添加作者",
