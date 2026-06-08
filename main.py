@@ -447,7 +447,7 @@ class App(ctk.CTk):
             # 隐藏侧边栏
             self.sidebar.pack_forget()
             self.divider.pack_forget()
-            self._toggle_btn.configure(text=">")
+            self._toggle_btn.configure(text="⭕️")
             self._sidebar_visible = False
         else:
             # 显示侧边栏
