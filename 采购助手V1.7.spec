@@ -1,19 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
+# 采购管理系统 V1.7 PyInstaller 打包配置
 from PyInstaller.utils.hooks import collect_all
 
 datas = []
 binaries = []
-hiddenimports = ['openpyxl', 'openpyxl.styles', 'openpyxl.utils', 'openpyxl.drawing.image',
-              'PIL', 'PIL.Image', 'PIL.ImageTk', 'PIL.ImageDraw',
-              'pystray', 'pystray._win32']
+hiddenimports = [
+    'openpyxl', 'openpyxl.styles', 'openpyxl.utils', 'openpyxl.drawing.image',
+    'PIL', 'PIL.Image', 'PIL.ImageTk', 'PIL.ImageDraw',
+    'pystray', 'pystray._win32',
+    'urllib.request', 'json', 'threading', 'webbrowser',
+]
 
-# 打包所有图片资源（图标 + Logo + 侧边栏图标 + 模板）
+# 打包所有 assets 资源
 datas += [
     ('assets/同仁堂企业LOGO2.ico', 'assets'),
     ('assets/icon_collapse.png', 'assets'),
     ('assets/icon_expand.png', 'assets'),
     ('assets/logo_40x40.png', 'assets'),
     ('assets/产品包装报价单_模板.xlsx', 'assets'),
+    ('assets/物料查询导入模板.csv', 'assets'),
     # 导航栏图标
     ('assets/nav_dashboard.png', 'assets'),
     ('assets/nav_packaging.png', 'assets'),
@@ -25,14 +30,18 @@ datas += [
     ('assets/nav_travel.png', 'assets'),
     ('assets/nav_memo.png', 'assets'),
     ('assets/nav_settings.png', 'assets'),
+    ('assets/nav_tangxun.png', 'assets'),
 ]
 
 # customtkinter 及其依赖
 tmp_ret = collect_all('customtkinter')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
 tmp_ret = collect_all('darkdetect')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
+tmp_ret = collect_all('pystray')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 a = Analysis(
     ['main.py'],
@@ -47,6 +56,7 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
