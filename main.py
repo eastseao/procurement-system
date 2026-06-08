@@ -3,7 +3,7 @@
 """
 采购管理系统 - 主入口
 功能：物料下单、物料查询、供应商管理、催款记录、采购垫付、差旅报销、备忘录、设置
-V1.8.2 修复：_on_closing 崩溃、精简 _toggle_compact、更新应用图标
+V1.8.2 升级：内置集团介绍页、恢复原生标题栏、优化导航图标、修复作者页空白
 """
 
 import sys
@@ -58,6 +58,7 @@ from pages.quotation_page import QuotationPage
 from pages.dashboard_page import DashboardPage
 from pages.settings_page import SettingsPage, load_settings
 from pages.tangxun_page import TangxunPage
+from pages.group_intro_page import GroupIntroPage
 
 # ── pystray 系统托盘 ──
 try:
@@ -161,11 +162,10 @@ def _add_tooltip(widget, text):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title(f"采购助手 V{__version__}")
+        self.title("采购助手")
         self.geometry("1280x800")
         self.minsize(1100, 700)
         self.configure(fg_color=COLORS["bg"])
-        self.overrideredirect(True)  # 移除原生标题栏
 
         # 设置程序图标（使用 iconphoto 支持 PNG）
         if os.path.exists(ICO_PATH):
@@ -518,6 +518,8 @@ class App(ctk.CTk):
             self.current_page = TangxunPage(self.main_area, self.db, COLORS)
         elif key == "settings":
             self.current_page = SettingsPage(self.main_area, self.db, COLORS)
+        elif key == "group_intro":
+            self.current_page = GroupIntroPage(self.main_area, self.db, COLORS)
 
         if self.current_page:
             self.current_page.pack(fill="both", expand=True)
@@ -535,19 +537,12 @@ class App(ctk.CTk):
         )
 
     def _open_group_intro(self):
-        """打开同仁堂集团介绍页面"""
-        # 集团介绍HTML文件路径
-        group_intro_path = _get_resource_path("assets/同仁堂集团组织架构3.0.html")
-        
-        # 如果打包后的资源中没有，则使用绝对路径
-        if not os.path.exists(group_intro_path):
-            group_intro_path = r"I:\采购管理系统\同仁堂集团组织架构3.0.html"
-        
-        # 如果文件存在，则在默认浏览器中打开
-        if os.path.exists(group_intro_path):
-            webbrowser.open(f"file://{os.path.abspath(group_intro_path)}")
-        else:
-            messagebox.showwarning("提示", "找不到集团介绍页面文件")
+        """打开同仁堂集团介绍页面（内置）"""
+        # 取消所有导航按钮高亮
+        for k, btn in self.nav_buttons.items():
+            btn.configure(fg_color="transparent", text_color=COLORS["sidebar_text"])
+        self.settings_btn.configure(fg_color="transparent", text_color=COLORS["sidebar_text"])
+        self._switch_page("group_intro")
 
 
 

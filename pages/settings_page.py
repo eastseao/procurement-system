@@ -11,6 +11,20 @@ import customtkinter as ctk
 
 from version import __version__, GITHUB_RELEASES_URL
 
+# ── PIL 可用性检查 ──
+try:
+    from PIL import Image, ImageTk
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+
+
+def _get_resource_path(rel_path):
+    """兼容PyInstaller打包后的资源路径"""
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, rel_path)
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), rel_path)
+
 # ── 注册表开机自启 ─────────────────────────────
 _REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 _REG_NAME = "采购助手"
@@ -589,7 +603,6 @@ class SettingsPage(ctk.CTkFrame):
         avatar_path = _get_resource_path("assets/avatar.png")
         if os.path.exists(avatar_path) and PIL_AVAILABLE:
             try:
-                from PIL import Image
                 avatar_img = ctk.CTkImage(
                     light_image=Image.open(avatar_path),
                     size=(100, 100))
@@ -653,7 +666,6 @@ class SettingsPage(ctk.CTkFrame):
         wx_qr_path = _get_resource_path("assets/wx.png")
         if os.path.exists(wx_qr_path) and PIL_AVAILABLE:
             try:
-                from PIL import Image
                 wx_img = ctk.CTkImage(
                     light_image=Image.open(wx_qr_path),
                     size=(150, 150))
