@@ -14,7 +14,6 @@ from datetime import datetime
 
 __version__ = "1.8.3"
 __version_date__ = "2026-06-09"
-__version_date__ = "2026-06-09"
 
 # ═══════════════════════════════════════════════════════
 # GitHub 仓库信息（上传后请修改为你的实际仓库地址）

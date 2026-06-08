@@ -394,7 +394,7 @@ class GroupIntroPage(ctk.CTkFrame):
             tag_fg = "#8B4513" if is_highlight else "white"
             tag_frame = ctk.CTkFrame(
                 tags_row,
-                fg_color="#FFD700" if is_highlight else "#FFFFFF33",
+                fg_color="#FFD700" if is_highlight else "#E8DDD0",
                 corner_radius=12,
             )
             tag_frame.pack(side="left", padx=(0, 6))
