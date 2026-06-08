@@ -1,0 +1,35 @@
+# === Python 字节码 ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# === PyInstaller 构建产物（文件体积巨大，不上传） ===
+build/
+dist/
+*.spec.bak
+
+# === 数据库文件（运行时生成） ===
+*.db
+
+# === 日志文件 ===
+*.log
+
+# === IDE / 编辑器 ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === 操作系统 ===
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# === 临时文件 ===
+*.tmp
+*.bak
+
+# === 环境变量文件 ===
+.env
