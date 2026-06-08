@@ -341,7 +341,7 @@ class App(ctk.CTk):
     def _build_ui(self):
         # ── 侧边栏 ──────────────────────────────────────
         self.sidebar = ctk.CTkFrame(
-            self, width=120, fg_color=COLORS["sidebar"],
+            self, width=90, fg_color=COLORS["sidebar"],
             corner_radius=0, border_width=0
         )
         self.sidebar.pack(side="left", fill="y")
@@ -422,55 +422,6 @@ class App(ctk.CTk):
         # ── 主内容区域 ──
         self.main_area = ctk.CTkFrame(self, fg_color=COLORS["bg"], corner_radius=0)
         self.main_area.pack(side="left", fill="both", expand=True)
-
-        # ── 侧边栏折叠/展开浮动按钮 ──────────────────────
-        self._sidebar_visible = True
-        self._toggle_btn = ctk.CTkButton(
-            self,
-            text="<",
-            width=28,
-            height=64,
-            corner_radius=14,
-            fg_color=COLORS["sidebar"],
-            hover_color=COLORS["sidebar_hover"],
-            text_color=COLORS["sidebar_text"],
-            font=ctk.CTkFont(size=16, weight="bold"),
-            command=self._toggle_sidebar,
-        )
-        self._update_toggle_btn_position()
-        # 绑定窗口大小变化事件，更新按钮位置
-        self.bind("<Configure>", lambda e: self._update_toggle_btn_position())
-
-    def _toggle_sidebar(self):
-        """切换侧边栏显示/隐藏"""
-        if self._sidebar_visible:
-            # 隐藏侧边栏
-            self.sidebar.pack_forget()
-            self.divider.pack_forget()
-            self._toggle_btn.configure(text="⭕️")
-            self._sidebar_visible = False
-        else:
-            # 显示侧边栏
-            self.sidebar.pack(side="left", fill="y")
-            self.divider.pack(side="left", fill="y")
-            self._toggle_btn.configure(text="<")
-            self._sidebar_visible = True
-        self._update_toggle_btn_position()
-
-    def _update_toggle_btn_position(self):
-        """更新浮动按钮位置（紧贴侧边栏右边缘，垂直居中偏下）"""
-        if hasattr(self, '_toggle_btn') and self._toggle_btn.winfo_exists():
-            if self._sidebar_visible:
-                # 侧边栏可见时，按钮在侧边栏右边缘
-                x = self.sidebar.winfo_width() + 4
-            else:
-                # 侧边栏隐藏时，按钮在窗口左边缘
-                x = 4
-            # 垂直位置：窗口高度 - 80（留出底部空间）
-            y = self.winfo_height() - 80
-            if y < 100:
-                y = 100
-            self._toggle_btn.place(x=x, y=y, anchor="nw")
 
     def _switch_page(self, key):
         for k, btn in self.nav_buttons.items():
