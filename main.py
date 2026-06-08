@@ -3,7 +3,7 @@
 """
 采购管理系统 - 主入口
 功能：物料下单、物料查询、供应商管理、催款记录、采购垫付、差旅报销、备忘录、设置
-V1.8.2 升级：内置集团介绍页、恢复原生标题栏、优化导航图标、修复作者页空白
+V1.8.3 升级：重写集团介绍页(完整HTML内容+下拉展开)、优化仪表盘排版、恢复1.5版导航图标、更换窗口图标
 """
 
 import sys
@@ -108,7 +108,7 @@ def _get_resource_path(rel_path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), rel_path)
 
 
-ICO_PATH  = _get_resource_path("assets/同仁堂企业LOGO.png")
+ICO_PATH  = _get_resource_path("assets/同仁堂企业LOGO2.png")
 COLLAPSE_ICON_PATH = _get_resource_path("assets/icon_collapse.png")
 EXPAND_ICON_PATH   = _get_resource_path("assets/icon_expand.png")
 LOGO_PATH          = _get_resource_path("assets/logo_40x40.png")
@@ -370,19 +370,16 @@ class App(ctk.CTk):
             except Exception:
                 pass
 
-        # 加载导航栏图标（转换为简约浅灰色）
+        # 加载导航栏图标（1.5版本原始彩色图标）
         self._nav_icon_images = {}
         if PIL_AVAILABLE:
-            from PIL import ImageOps
             for key, path in NAV_ICON_PATHS.items():
                 if os.path.exists(path):
                     try:
-                        # 打开图片并转换为 grayscale（简约浅灰色）
-                        img = Image.open(path).convert('LA')
-                        # 调整大小为浅灰色风格
-                        img_gray = ImageOps.grayscale(img.convert('RGB'))
+                        # 直接使用原图
+                        img = Image.open(path)
                         self._nav_icon_images[key] = ctk.CTkImage(
-                            light_image=img_gray, size=(28, 28))
+                            light_image=img, size=(28, 28))
                     except Exception:
                         self._nav_icon_images[key] = None
                 else:

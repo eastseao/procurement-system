@@ -1,214 +1,270 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""仪表盘页面 v1.5 - 圆角卡片 + 同类内容合并"""
+"""仪表盘页面 V1.8.3 - 重新设计，更美观大气"""
 
 import customtkinter as ctk
-from tkinter import messagebox
+import tkinter as tk
 from datetime import datetime
 
-# 莫兰迪暖色卡
-CARD_COLORS = [
-    "#C1816D",  # 陶土色
-    "#8FA882",  # 鼠尾草绿
-    "#C9A96E",  # 麦色
-    "#B56A6A",  # 暗玫瑰
-    "#7BA5B5",  # 灰蓝
-]
+# 各模块莫兰迪色
+MODULE_COLORS = {
+    "packaging":  "#C1816D",   # 陶土色 - 物料下单
+    "collection": "#8FA882",   # 鼠尾草绿 - 催款记录
+    "purchase":   "#C9A96E",   # 麦色 - 采购垫付
+    "travel":     "#B56A6A",   # 暗玫瑰 - 差旅报销
+    "memo":       "#7BA5B5",   # 灰蓝 - 备忘录
+}
 
 
 class DashboardPage(ctk.CTkFrame):
-    """仪表盘主页面"""
+    """仪表盘主页面 - V1.8.3 优化版"""
 
     def __init__(self, parent, db, C):
         super().__init__(parent, fg_color=C["bg"], corner_radius=0)
         self.db = db
         self.C = C
+        self._value_labels = {}  # key -> label widget
         self._build_ui()
         self._load_data()
 
+    # ── UI构建 ────────────────────────────────────
     def _build_ui(self):
-        # 标题
-        header = ctk.CTkFrame(self, fg_color="transparent", height=56)
-        header.pack(fill="x", padx=24, pady=(16, 8))
-        header.pack_propagate(False)
+        # ── 顶部概览横幅 ──────────────────────────────
+        banner = ctk.CTkFrame(
+            self, fg_color=self.C["primary"], corner_radius=16,
+        )
+        banner.pack(fill="x", padx=24, pady=(16, 12))
+
+        banner_inner = ctk.CTkFrame(banner, fg_color="transparent")
+        banner_inner.pack(fill="x", padx=28, pady=(22, 22))
+
+        # 左侧：欢迎语 + 日期
+        left_col = ctk.CTkFrame(banner_inner, fg_color="transparent")
+        left_col.pack(side="left", fill="y")
 
         ctk.CTkLabel(
-            header, text="📊  仪表盘",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
-            text_color=self.C["text"],
-        ).pack(side="left", pady=12)
+            left_col,
+            text="仪表盘",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=24, weight="bold"),
+            text_color="white",
+        ).pack(anchor="w")
 
-        # 更新时间
+        ctk.CTkLabel(
+            left_col,
+            text="采购管理数据总览",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            text_color="#F5F0EB",
+        ).pack(anchor="w", pady=(4, 0))
+
+        # 右侧：更新时间
+        right_col = ctk.CTkFrame(banner_inner, fg_color="transparent")
+        right_col.pack(side="right", fill="y")
+
         self.time_label = ctk.CTkLabel(
-            header, text="",
-            font=ctk.CTkFont(size=12),
-            text_color=self.C.get("text_secondary", "#8B7355"),
+            right_col,
+            text="",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            text_color="#F5F0EB",
         )
-        self.time_label.pack(side="right", pady=12)
+        self.time_label.pack(side="bottom")
 
-        # 卡片区域
-        scroll_frame = ctk.CTkScrollableFrame(self, fg_color="transparent", corner_radius=0)
-        scroll_frame.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+        # ── 主卡片网格 ──────────────────────────────
+        content = ctk.CTkFrame(self, fg_color="transparent")
+        content.pack(fill="both", expand=True, padx=24, pady=(0, 16))
 
-        # ── 第一行：3张卡片 ──
-        row1 = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-        row1.pack(fill="x", pady=(0, 14))
+        # 第一行：3 张卡片
+        row1 = ctk.CTkFrame(content, fg_color="transparent")
+        row1.pack(fill="x", pady=(0, 12))
+        row1.grid_columnconfigure((0, 1, 2), weight=1)
 
-        # 物料下单（处理中 + 已完成 合并）
-        self.card_packaging = self._create_dual_card(
-            row1, "📦  物料下单",
-            [("处理中", "0", "个"), ("已完成", "0", "个")],
-            CARD_COLORS[0],
+        # 物料下单
+        self.card_packaging = self._make_dual_card(
+            row1, "物料下单", [
+                ("处理中", "0", "条"),
+                ("已完成", "0", "条"),
+            ],
+            MODULE_COLORS["packaging"],
+            col=0, col_pad=(0, 6),
         )
-        self.card_packaging.pack(side="left", fill="x", expand=True, padx=(0, 7))
 
-        # 催款记录（单值）
-        self.card_collection = self._create_card(
-            row1, "💰  催款记录", "0", "条记录",
-            CARD_COLORS[1],
+        # 催款记录
+        self.card_collection = self._make_single_card(
+            row1, "催款记录", "0", "条记录",
+            MODULE_COLORS["collection"],
+            col=1, col_pad=6,
         )
-        self.card_collection.pack(side="left", fill="x", expand=True, padx=7)
 
-        # 采购垫付（笔数 + 待报销 合并）
-        self.card_purchase = self._create_dual_card(
-            row1, "💳  采购垫付",
-            [("笔数", "0", "笔"), ("待报销", "¥0", "元")],
-            CARD_COLORS[2],
+        # 采购垫付
+        self.card_purchase = self._make_dual_card(
+            row1, "采购垫付", [
+                ("总笔数", "0", "笔"),
+                ("待报销", "¥0", ""),
+            ],
+            MODULE_COLORS["purchase"],
+            col=2, col_pad=(6, 0),
         )
-        self.card_purchase.pack(side="left", fill="x", expand=True, padx=(7, 0))
 
-        # ── 第二行：2张卡片 ──
-        row2 = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-        row2.pack(fill="x", pady=(0, 14))
+        # 第二行：2 张卡片
+        row2 = ctk.CTkFrame(content, fg_color="transparent")
+        row2.pack(fill="x", pady=(0, 12))
+        row2.grid_columnconfigure((0, 1), weight=1)
 
-        # 差旅报销（行程数 + 待报销 合并）
-        self.card_travel = self._create_dual_card(
-            row2, "✈️  差旅报销",
-            [("行程数", "0", "个"), ("待报销", "¥0", "元")],
-            CARD_COLORS[3],
+        # 差旅报销
+        self.card_travel = self._make_dual_card(
+            row2, "差旅报销", [
+                ("行程数", "0", "个"),
+                ("待报销", "¥0", ""),
+            ],
+            MODULE_COLORS["travel"],
+            col=0, col_pad=(0, 6),
         )
-        self.card_travel.pack(side="left", fill="x", expand=True, padx=(0, 7))
 
-        # 备忘录（单值）
-        self.card_memo = self._create_card(
-            row2, "📝  备忘录", "0", "条待处理",
-            CARD_COLORS[4],
+        # 备忘录
+        self.card_memo = self._make_single_card(
+            row2, "备忘录", "0", "条待处理",
+            MODULE_COLORS["memo"],
+            col=1, col_pad=(6, 0),
         )
-        self.card_memo.pack(side="left", fill="x", expand=True, padx=(7, 0))
 
-    # ── 单值卡片 ──────────────────────────────────────
-    def _create_card(self, parent, title, value, unit, color):
-        """创建一个单值统计卡片（圆角矩形）"""
-        card = ctk.CTkFrame(parent, fg_color=color, corner_radius=18)
+        # ── 底部快捷入口提示 ──
+        hints = ctk.CTkFrame(content, fg_color=self.C["card"], corner_radius=12)
+        hints.pack(fill="x", pady=(0, 8))
 
-        content = ctk.CTkFrame(card, fg_color="transparent")
-        content.pack(fill="both", expand=True, padx=18, pady=(16, 16))
+        hint_items = [
+            ("物料下单", "快速记录采购订单，支持导入模板"),
+            ("催款记录", "跟踪供应商催款状态，及时跟进"),
+            ("采购垫付", "记录个人垫付费用，一键报销"),
+        ]
+        for idx, (hint_title, hint_desc) in enumerate(hint_items):
+            hint_frame = ctk.CTkFrame(hints, fg_color="transparent")
+            hint_frame.pack(side="left", fill="x", expand=True, padx=18, pady=(14, 14))
+
+            ctk.CTkLabel(
+                hint_frame, text=f"💡 {hint_title}",
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+                text_color=self.C["text"],
+            ).pack(anchor="w")
+
+            ctk.CTkLabel(
+                hint_frame, text=hint_desc,
+                font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                text_color=self.C["text_secondary"],
+            ).pack(anchor="w", pady=(2, 0))
+
+    # ── 单值卡片 ──────────────────────────────────
+    def _make_single_card(self, parent, title, value, unit, color, col, col_pad):
+        card = ctk.CTkFrame(
+            parent, fg_color=color, corner_radius=18,
+        )
+        card.grid(row=0, column=col, sticky="nsew", padx=col_pad if isinstance(col_pad, tuple) else (col_pad, col_pad))
+
+        # 内边距容器
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=22, pady=(20, 22))
 
         ctk.CTkLabel(
-            content, text=title,
+            inner, text=title,
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             text_color="#FFFFFF",
         ).pack(anchor="w")
 
-        value_label = ctk.CTkLabel(
-            content, text=value,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=32, weight="bold"),
+        val_label = ctk.CTkLabel(
+            inner, text=value,
+            font=ctk.CTkFont(family="Microsoft YaHei", size=38, weight="bold"),
             text_color="#FFFFFF",
         )
-        value_label.pack(anchor="w", pady=(8, 0))
+        val_label.pack(anchor="w", pady=(10, 0))
 
         ctk.CTkLabel(
-            content, text=unit,
-            font=ctk.CTkFont(size=12),
+            inner, text=unit,
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
             text_color="#F0E8E0",
-        ).pack(anchor="w", pady=(2, 0))
+        ).pack(anchor="w", pady=(4, 0))
 
-        setattr(card, "value_label_0", value_label)
+        self._value_labels[title] = val_label
         return card
 
-    # ── 双值合并卡片 ──────────────────────────────────
-    def _create_dual_card(self, parent, title, items, color):
-        """
-        创建一个双值合并卡片
-        items = [("子标题1", "值1", "单位1"), ("子标题2", "值2", "单位2")]
-        """
-        card = ctk.CTkFrame(parent, fg_color=color, corner_radius=18)
+    # ── 双值卡片 ──────────────────────────────────
+    def _make_dual_card(self, parent, title, items, color, col, col_pad):
+        card = ctk.CTkFrame(
+            parent, fg_color=color, corner_radius=18,
+        )
+        card.grid(row=0, column=col, sticky="nsew", padx=col_pad if isinstance(col_pad, tuple) else (col_pad, col_pad))
 
-        header_frame = ctk.CTkFrame(card, fg_color="transparent")
-        header_frame.pack(fill="x", padx=18, pady=(16, 12))
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=22, pady=(20, 22))
 
         ctk.CTkLabel(
-            header_frame, text=title,
+            inner, text=title,
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             text_color="#FFFFFF",
         ).pack(anchor="w")
 
         # 两个值并排
-        values_frame = ctk.CTkFrame(card, fg_color="transparent")
-        values_frame.pack(fill="x", padx=18, pady=(0, 16))
+        vals_row = ctk.CTkFrame(inner, fg_color="transparent")
+        vals_row.pack(fill="x", pady=(14, 0))
 
-        value_labels = []
-        for idx, (subtitle, value, unit) in enumerate(items):
-            col_frame = ctk.CTkFrame(values_frame, fg_color="transparent")
-            col_frame.pack(side="left", fill="x", expand=True, padx=(0, 12) if idx == 0 else 0)
+        for idx, (sub, val, unit) in enumerate(items):
+            col_frame = ctk.CTkFrame(vals_row, fg_color="transparent")
+            col_frame.pack(side="left", fill="x", expand=True)
 
-            value_label = ctk.CTkLabel(
-                col_frame, text=value,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=28, weight="bold"),
+            val_label = ctk.CTkLabel(
+                col_frame, text=val,
+                font=ctk.CTkFont(family="Microsoft YaHei", size=32, weight="bold"),
                 text_color="#FFFFFF",
             )
-            value_label.pack(anchor="w")
+            val_label.pack(anchor="w")
 
-            ctk.CTkLabel(
-                col_frame, text=f"{subtitle}  {unit}",
-                font=ctk.CTkFont(size=11),
+            sub_label = ctk.CTkLabel(
+                col_frame, text=f"{sub}  {unit}",
+                font=ctk.CTkFont(family="Microsoft YaHei", size=11),
                 text_color="#F0E8E0",
-            ).pack(anchor="w", pady=(2, 0))
+            )
+            sub_label.pack(anchor="w", pady=(2, 0))
 
-            setattr(card, f"value_label_{idx}", value_label)
+            self._value_labels[f"{title}_{sub}"] = val_label
 
         return card
 
+    # ── 数据加载 ──────────────────────────────────
     def _load_data(self):
-        """加载统计数据"""
         try:
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
             self.time_label.configure(text=f"更新时间：{now}")
 
-            # 物料下单 — 处理中 + 已完成
+            # 物料下单
             packaging = self.db.get_packagings(archived=0)
             packaging_done = self.db.get_packagings(archived=1)
-            self._update_card_value(self.card_packaging, 0, str(len(packaging)))
-            self._update_card_value(self.card_packaging, 1, str(len(packaging_done)))
+            self._set_value("物料下单_处理中", str(len(packaging)))
+            self._set_value("物料下单_已完成", str(len(packaging_done)))
 
             # 催款记录
             collections = self.db.get_collections()
-            self._update_card_value(self.card_collection, 0, str(len(collections)))
+            self._set_value("催款记录", str(len(collections)))
 
-            # 采购垫付 — 笔数 + 待报销金额
+            # 采购垫付
             purchases = self.db.get_purchases(archived=0)
             purchase_amount = sum(p.get("total", 0) for p in purchases if p.get("reimbursement_status") != "已报销")
-            self._update_card_value(self.card_purchase, 0, str(len(purchases)))
-            self._update_card_value(self.card_purchase, 1, f"¥{purchase_amount:.2f}")
+            self._set_value("采购垫付_总笔数", str(len(purchases)))
+            self._set_value("采购垫付_待报销", f"¥{purchase_amount:.0f}")
 
-            # 差旅报销 — 行程数 + 待报销金额
+            # 差旅报销
             travels = self.db.get_travels(archived=0)
             travel_amount = sum(t.get("total", 0) for t in travels if t.get("reimbursement_status") != "已报销")
-            self._update_card_value(self.card_travel, 0, str(len(travels)))
-            self._update_card_value(self.card_travel, 1, f"¥{travel_amount:.2f}")
+            self._set_value("差旅报销_行程数", str(len(travels)))
+            self._set_value("差旅报销_待报销", f"¥{travel_amount:.0f}")
 
             # 备忘录
             memos = self.db.get_memos(status="待处理")
-            self._update_card_value(self.card_memo, 0, str(len(memos)))
+            self._set_value("备忘录", str(len(memos)))
 
         except Exception as e:
             print(f"加载统计数据失败: {e}")
 
-    def _update_card_value(self, card, idx, value):
-        """更新卡片中指定索引的数值"""
-        attr = f"value_label_{idx}"
-        if hasattr(card, attr):
-            getattr(card, attr).configure(text=value)
+    def _set_value(self, key, value):
+        """更新标签值"""
+        if key in self._value_labels:
+            self._value_labels[key].configure(text=value)
 
     def refresh(self):
         """刷新数据"""
