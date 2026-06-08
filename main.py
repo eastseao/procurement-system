@@ -165,6 +165,7 @@ class App(ctk.CTk):
         self.geometry("1280x800")
         self.minsize(1100, 700)
         self.configure(fg_color=COLORS["bg"])
+        self.overrideredirect(True)  # 移除原生标题栏
 
         # 设置程序图标
         if os.path.exists(ICO_PATH):
@@ -182,7 +183,6 @@ class App(ctk.CTk):
         self.db = Database(_data_dir)
         self.current_page = None
         self._nav_compact = False    # 汉堡包折叠：仅图标模式
-        self._pinned = False          # 窗口置顶状态
 
         # ── 系统托盘状态 ──
         self._tray_enabled = settings.get("tray_enabled", "0") == "1"
@@ -368,37 +368,23 @@ class App(ctk.CTk):
             except Exception:
                 pass
 
-        # 加载导航栏图标
+        # 加载导航栏图标（转换为简约浅灰色）
         self._nav_icon_images = {}
         if PIL_AVAILABLE:
+            from PIL import ImageOps
             for key, path in NAV_ICON_PATHS.items():
                 if os.path.exists(path):
                     try:
+                        # 打开图片并转换为 grayscale（简约浅灰色）
+                        img = Image.open(path).convert('LA')
+                        # 调整大小为浅灰色风格
+                        img_gray = ImageOps.grayscale(img.convert('RGB'))
                         self._nav_icon_images[key] = ctk.CTkImage(
-                            light_image=Image.open(path), size=(28, 28))
+                            light_image=img_gray, size=(28, 28))
                     except Exception:
                         self._nav_icon_images[key] = None
                 else:
                     self._nav_icon_images[key] = None
-
-        # ── 置顶按钮（侧边栏顶部居中）─────────────────────
-        pin_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=68)
-        pin_frame.pack(side="top", fill="x", padx=0, pady=(6, 2))
-        pin_frame.pack_propagate(False)
-
-        self.pin_btn = ctk.CTkButton(
-            pin_frame,
-            text="📌",
-            width=60, height=60,
-            font=ctk.CTkFont(size=22),
-            fg_color="transparent",
-            text_color=COLORS["sidebar_text"],
-            hover_color=COLORS["sidebar_hover"],
-            corner_radius=10,
-            command=self._toggle_pin,
-        )
-        self.pin_btn.pack(padx=8, pady=4, expand=True)
-        _add_tooltip(self.pin_btn, "固定窗口到最前")
 
         # ── Logo（置顶按钮下方居中，点击打开集团介绍页）─────────────────────
         logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent", height=48)
@@ -619,54 +605,6 @@ class App(ctk.CTk):
             _add_tooltip(self.hamburger_btn, "折叠导航")
             # 恢复置顶按钮大小
             self.pin_btn.configure(text="📌", width=60, height=60, font=ctk.CTkFont(size=22))
-
-    # ── 窗口置顶 ─────────────────────────────────
-    def _toggle_pin(self):
-        """切换窗口是否固定在最前面"""
-        self._pinned = not self._pinned
-        self.attributes("-topmost", self._pinned)
-        if self._pinned:
-            self.pin_btn.configure(fg_color=COLORS["primary"], text_color="white", text="📍")
-            _add_tooltip(self.pin_btn, "已固定 - 点击取消")
-        else:
-            self.pin_btn.configure(fg_color="transparent", text_color=COLORS["sidebar_text"], text="📌")
-            _add_tooltip(self.pin_btn, "固定窗口到最前")
-
-    # ── 标题栏配色（Win11 DWM API）───────────────────
-    def _set_titlebar_color(self):
-        """设置窗口标题栏配色为莫兰迪暖色，与页面保持一致"""
-        try:
-            hwnd = int(self.winfo_id())
-            # Win11 DWMWA_CAPTION_COLOR / DWMWA_TEXT_COLOR
-            DWMWA_CAPTION_COLOR = 35
-            DWMWA_TEXT_COLOR = 36
-            # 颜色格式: 0xAABBGGRR
-            caption_color = 0xFFEBF0F5  # #F5F0EB (暖米白)
-            text_color = 0xFF28374A     # #4A3728 (深暖棕)
-            ctypes.windll.dwmapi.DwmSetWindowAttribute(
-                hwnd, DWMWA_CAPTION_COLOR,
-                ctypes.byref(ctypes.c_int(caption_color)), ctypes.sizeof(ctypes.c_int))
-            ctypes.windll.dwmapi.DwmSetWindowAttribute(
-                hwnd, DWMWA_TEXT_COLOR,
-                ctypes.byref(ctypes.c_int(text_color)), ctypes.sizeof(ctypes.c_int))
-        except Exception:
-            pass  # Win10 或不支持时静默跳过
-
-    # ── 关闭窗口：按设置直接执行 ─────────────────
-    def _on_closing(self):
-        """拦截窗口关闭事件：按设置直接执行，不再弹窗询问"""
-        if self._tray_enabled and PYSTRAY_AVAILABLE:
-            self._minimize_to_tray()
-        else:
-            self._quit_app()
-
-    # ── 系统托盘功能 ──────────────────────────────────
-
-    def _minimize_to_tray(self):
-        """收纳进系统托盘"""
-        if not PYSTRAY_AVAILABLE:
-            self._quit_app()
-            return
         if self._tray_icon is not None:
             return  # 已经在托盘中
 

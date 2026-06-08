@@ -406,7 +406,7 @@ class SettingsPage(ctk.CTkFrame):
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(20, 10))
 
-        # ── 当前版本 + 检查更新按钮 ──────────────
+        # ── 当前版本 ──────────────
         ver_row = ctk.CTkFrame(card, fg_color="transparent")
         ver_row.pack(fill="x", padx=20, pady=(0, 4))
 
@@ -415,15 +415,6 @@ class SettingsPage(ctk.CTkFrame):
             font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
             text_color=self.C["primary"],
         ).pack(side="left")
-
-        check_btn = ctk.CTkButton(
-            ver_row, text="检查更新",
-            width=100, height=32,
-            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
-            command=self._on_check_update,
-        )
-        check_btn.pack(side="right")
 
         # ── GitHub Releases 链接 ────────────────
         github_frame = ctk.CTkFrame(card, fg_color=self.C["primary_light"], corner_radius=8)
@@ -463,48 +454,43 @@ class SettingsPage(ctk.CTkFrame):
             justify="left", anchor="w",
         ).pack(fill="x", padx=24, pady=(0, 12))
 
-        # ── V1.7 版本更新 ───────────────────────
+        # ── 功能模块介绍 ──────────────────────
         ctk.CTkLabel(
-            card, text="V1.7 更新内容",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
-            text_color=self.C["text"],
-        ).pack(anchor="w", padx=20, pady=(0, 6))
-
-        v17_updates = [
-            "版本介绍接入 GitHub，支持「检查更新」按钮",
-            "完善作者信息，增加仓库下载直链",
-            "程序启动自动检测 GitHub 最新 Release",
-            "修复物料下单页面筛选条件触发无限递归的 Bug",
-            "新增供应商文本筛选、项目号验证、下单数量字段",
-        ]
-        for item in v17_updates:
-            ctk.CTkLabel(
-                card, text=f"  • {item}",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
-                text_color=self.C["text_secondary"],
-                justify="left", anchor="w",
-            ).pack(fill="x", padx=24, pady=(0, 2))
-
-        # ── V1.8 版本更新 ───────────────────────
-        ctk.CTkLabel(
-            card, text="V1.8 更新内容",
+            card, text="功能模块介绍",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(14, 6))
 
-        v18_updates = [
-            "导航栏logo点击打开同仁堂集团介绍页面",
-            "报价单页面内置报价单模板",
-            "设置页面「版本介绍」改为「软件介绍」",
-            "优化用户界面和交互体验",
+        modules = [
+            ("📊 仪表盘", "首页数据概览，快速查看待处理事项和系统状态"),
+            ("📦 物料下单", "创建和管理物料采购订单，支持筛选、导出Excel"),
+            ("📑 报价单", "生成产品包装报价单，内置Excel模板，支持导出"),
+            ("🔍 物料查询", "查询物料信息，支持多条件筛选和导出"),
+            ("🏢 供应商管理", "管理供应商信息，维护供应商档案和联系方式"),
+            ("💰 催款记录", "记录催款信息，跟踪款项回收进度"),
+            ("🛒 采购垫付", "记录采购垫付款项，管理报销流程"),
+            ("✈️ 差旅报销", "差旅费用报销管理，支持粘贴和图片识别"),
+            ("📝 备忘录", "工作备忘录，支持分类管理和关键字搜索"),
+            ("⚙️ 系统设置", "外观设置、数据管理、启动设置和系统配置"),
         ]
-        for item in v18_updates:
+        
+        for title, desc in modules:
+            module_frame = ctk.CTkFrame(card, fg_color="transparent")
+            module_frame.pack(fill="x", padx=24, pady=(0, 6))
+            
             ctk.CTkLabel(
-                card, text=f"  • {item}",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                module_frame, text=title,
+                font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+                text_color=self.C["primary"],
+                width=120,
+            ).pack(side="left", anchor="w")
+            
+            ctk.CTkLabel(
+                module_frame, text=desc,
+                font=ctk.CTkFont(family="Microsoft YaHei", size=11),
                 text_color=self.C["text_secondary"],
                 justify="left", anchor="w",
-            ).pack(fill="x", padx=24, pady=(0, 2))
+            ).pack(side="left", padx=(8, 0), fill="x", expand=True)
 
         # ── 技术栈 ──────────────────────────────
         ctk.CTkLabel(
@@ -581,7 +567,7 @@ class SettingsPage(ctk.CTkFrame):
         card = ctk.CTkFrame(self._right_content, fg_color=self.C["card"], corner_radius=10)
         card.pack(fill="x", pady=(0, 12))
 
-        # ── 标题 ──────────────────────────────
+        # ── 标题 ──────────────────────────
         ctk.CTkLabel(
             card, text="关于作者",
             font=ctk.CTkFont(family="Microsoft YaHei", size=18, weight="bold"),
@@ -591,19 +577,42 @@ class SettingsPage(ctk.CTkFrame):
         sep = tk.Frame(card, height=1, bg=self.C["divider"])
         sep.pack(fill="x", padx=20, pady=(0, 12))
 
-        # ── 作者简介 ──────────────────────────
-        info_frame = ctk.CTkFrame(card, fg_color="transparent")
-        info_frame.pack(fill="x", padx=20, pady=(0, 0))
+        # ── 作者信息（左侧头像 + 右侧信息）──────────────────────
+        info_container = ctk.CTkFrame(card, fg_color="transparent")
+        info_container.pack(fill="x", padx=20, pady=(0, 12))
+
+        # 左侧：作者头像
+        avatar_frame = ctk.CTkFrame(info_container, fg_color="transparent", width=120)
+        avatar_frame.pack(side="left", padx=(0, 20))
+        avatar_frame.pack_propagate(False)
+
+        avatar_path = _get_resource_path("assets/avatar.png")
+        if os.path.exists(avatar_path) and PIL_AVAILABLE:
+            try:
+                from PIL import Image
+                avatar_img = ctk.CTkImage(
+                    light_image=Image.open(avatar_path),
+                    size=(100, 100))
+                avatar_label = ctk.CTkLabel(
+                    avatar_frame, image=avatar_img, text="")
+                avatar_label.image = avatar_img  # 保持引用
+                avatar_label.pack(pady=10)
+            except Exception:
+                pass
+        
+        # 右侧：作者信息
+        info_frame = ctk.CTkFrame(info_container, fg_color="transparent")
+        info_frame.pack(side="left", fill="both", expand=True)
 
         author_lines = [
-            ("📛", "作者", "EastSeaO"),
+            ("👤", "作者", "EastSeaO"),
             ("🏢", "就职", "北京同仁堂健康药业（青海）有限公司"),
             ("💼", "部门", "采购部 · 包装采购业务"),
         ]
 
         for icon, label, value in author_lines:
             row = ctk.CTkFrame(info_frame, fg_color="transparent")
-            row.pack(fill="x", padx=4, pady=2)
+            row.pack(fill="x", padx=4, pady=6)
 
             ctk.CTkLabel(
                 row, text=f"{icon}  {label}：",
@@ -611,13 +620,14 @@ class SettingsPage(ctk.CTkFrame):
                 text_color=self.C["text"],
                 width=80,
             ).pack(side="left")
+
             ctk.CTkLabel(
                 row, text=value,
                 font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
                 text_color=self.C["primary"],
             ).pack(side="left")
 
-        # ── 分隔线 ──────────────────────────────
+        # ── 分隔线 ──────────────────────────
         sep2 = tk.Frame(card, height=1, bg=self.C["divider"])
         sep2.pack(fill="x", padx=20, pady=(16, 12))
 
@@ -639,7 +649,31 @@ class SettingsPage(ctk.CTkFrame):
             text_color=self.C["text_secondary"],
         ).pack(anchor="w", padx=24, pady=(0, 10))
 
-        # ── GitHub 仓库 ───────────────────────
+        # ── 微信二维码 ──────────────────────────
+        wx_qr_path = _get_resource_path("assets/wx.png")
+        if os.path.exists(wx_qr_path) and PIL_AVAILABLE:
+            try:
+                from PIL import Image
+                wx_img = ctk.CTkImage(
+                    light_image=Image.open(wx_qr_path),
+                    size=(150, 150))
+                wx_frame = ctk.CTkFrame(card, fg_color="transparent")
+                wx_frame.pack(pady=(10, 16))
+                
+                wx_label = ctk.CTkLabel(
+                    wx_frame, image=wx_img, text="")
+                wx_label.image = wx_img  # 保持引用
+                wx_label.pack()
+                
+                ctk.CTkLabel(
+                    wx_frame, text="微信扫码添加作者",
+                    font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                    text_color=self.C["text_secondary"],
+                ).pack(pady=(6, 0))
+            except Exception:
+                pass
+
+        # ── GitHub 仓库 ──────────────────────
         github_frame = ctk.CTkFrame(card, fg_color=self.C["primary_light"], corner_radius=8)
         github_frame.pack(fill="x", padx=20, pady=(4, 6))
 
