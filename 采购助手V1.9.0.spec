@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# 采购助手 V1.8.4 - PyInstaller打包配置
+# 采购助手 V1.9.0 - PyInstaller打包配置
 import sys
 from pathlib import Path
 
@@ -65,7 +65,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='ProcurementAssistant-V1.8.4',
+    name='ProcurementAssistant-V1.9.0',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

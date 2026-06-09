@@ -3,7 +3,7 @@
 """
 采购管理系统 - 主入口
 功能：物料下单、物料查询、供应商管理、催款记录、采购垫付、差旅报销、备忘录、设置
-V1.8.3 修复：集团介绍页标签颜色兼容性修复（#FFFFFF33 -> #E8DDD0）
+V1.9.0 修复：系统托盘常驻、金额自动匹配、甲方电话修正
 """
 
 import sys
@@ -535,10 +535,7 @@ class App(ctk.CTk):
             self.after(0, self._do_restore)
 
     def _on_tray_restore(self, icon=None, item=None):
-        """托盘菜单：显示窗口"""
-        if self._tray_icon:
-            self._tray_icon.stop()
-            self._tray_icon = None
+        """托盘菜单：显示窗口（托盘图标始终保持）"""
         self.after(0, self._do_restore)
 
     def _on_tray_quit(self, icon=None, item=None):
@@ -549,8 +546,7 @@ class App(ctk.CTk):
         self.after(0, self._quit_app)
 
     def _do_restore(self):
-        """在主线程中恢复窗口"""
-        self._tray_icon = None
+        """在主线程中恢复窗口（托盘图标保持不销毁）"""
         self.deiconify()
         self.lift()
         self.focus_force()

@@ -145,7 +145,7 @@ def _load_party_a():
         "legal_rep":"施能文",
         "address":"",
         "contact":"龙存英",
-        "phone":"18094719236",
+        "phone":"13897764859",
     }
     if not os.path.exists(PARTY_A_FILE): return defaults
     try:
@@ -182,7 +182,7 @@ class SupplierDialog(ctk.CTkToplevel):
             ("legal_rep","法定代表人",240),("address","地址",480),
             ("contact","联系人",240),("auth_rep","授权代表",240),
             ("phone","电话",240),("fax","传真",240),
-            ("payment_days","账期（天）",160),("payment_method","付款方式",160),
+            ("payment_days","账期（天）",160),
             ("account_name","账户名称",480),("bank","开户行",480),
             ("account","账号",480),
         ]
@@ -264,7 +264,7 @@ class ContractPage(ctk.CTkFrame):
         self.party_b = {
             "full_name":"","legal_rep":"","address":"",
             "contact":"","auth_rep":"","phone":"","fax":"",
-            "payment_days":"90","payment_method":"电汇",
+            "payment_days":"90",
             "account_name":"","bank":"","account":"",
         }
         # 确认状态：是否已确认供应商
@@ -388,8 +388,6 @@ class ContractPage(ctk.CTkFrame):
             return
         # 注入乙方数据
         self._fill_party_b(s)
-        # 注入结算方式到合同信息
-        self._apply_settlement_from_supplier(s)
         self.supplier_confirmed = True
         self.confirm_status_label.configure(text=f"已确认: {s.get('short_name','')}", text_color="#8FA882")
         # 更新合同编号
@@ -416,7 +414,6 @@ class ContractPage(ctk.CTkFrame):
         for k in self.party_b:
             self.party_b[k] = ""
         self.party_b["payment_days"] = "90"
-        self.party_b["payment_method"] = "电汇"
         # 重置供应商确认状态
         self.supplier_confirmed = False
         self.confirm_status_label.configure(text="")
@@ -443,20 +440,9 @@ class ContractPage(ctk.CTkFrame):
         self.party_b["phone"]        = s.get("phone","")
         self.party_b["fax"]          = s.get("fax","")
         self.party_b["payment_days"] = s.get("payment_days","90")
-        self.party_b["payment_method"]=s.get("payment_method","电汇")
         self.party_b["account_name"] = s.get("account_name","")
         self.party_b["bank"]         = s.get("bank","")
         self.party_b["account"]      = s.get("account","")
-
-    def _apply_settlement_from_supplier(self,s):
-        """根据供应商账期更新结算方式下拉"""
-        pd = s.get("payment_days","90")
-        if pd == "90":
-            self.settlement_var.set("账期90天")
-        elif pd == "60":
-            self.settlement_var.set("账期60天")
-        elif pd == "0" or pd == "":
-            self.settlement_var.set("先款后货")
 
     # ── 供应商管理 ──
     def _manage_suppliers(self):
@@ -615,19 +601,13 @@ class ContractPage(ctk.CTkFrame):
         self.entry_contract_date.grid(row=2,column=1,padx=4,pady=6,sticky="w")
         self.entry_contract_date.insert(0,self._auto_contract_date())
 
-        # 第3行：结算方式 + 合计金额
-        ctk.CTkLabel(form,text="结算方式：",width=100,anchor="e",
+        # 合计金额（原结算方式行变为合计金额行）
+        ctk.CTkLabel(form,text="合计金额：",width=100,anchor="e",
             font=ctk.CTkFont(size=13)).grid(row=3,column=0,padx=(0,8),pady=6,sticky="e")
-        self.settlement_var=tk.StringVar(value="账期90天")
-        self.settlement_combo=ctk.CTkComboBox(form,
-            values=["账期90天","账期60天","先款后货"],
-            variable=self.settlement_var,width=160,height=32,
-            font=ctk.CTkFont(size=13))
-        self.settlement_combo.grid(row=3,column=1,padx=4,pady=6,sticky="w")
         self.total_label=ctk.CTkLabel(form,text="合计: 0.00 元",
             font=ctk.CTkFont(family="Microsoft YaHei",size=14,weight="bold"),
             text_color=self.C["primary"])
-        self.total_label.grid(row=3,column=2,columnspan=2,sticky="w",padx=(20,0),pady=6)
+        self.total_label.grid(row=3,column=1,sticky="w",padx=4,pady=6)
 
         # 初始更新合并编号
         self._update_combined_no()
@@ -667,7 +647,7 @@ class ContractPage(ctk.CTkFrame):
         self.product_container.pack(fill="x",padx=20,pady=(0,14))
         hdr=ctk.CTkFrame(self.product_container,fg_color="transparent")
         hdr.pack(fill="x",pady=(0,4))
-        for h in ["物料名称","项目号","尺寸","单位","数量","单价","金额","备注","操作"]:
+        for h in ["物料名称","项目号","材料结构","尺寸","单位","数量","单价","金额","备注","操作"]:
             ctk.CTkLabel(hdr,text=h,width=88,anchor="center",
                 font=ctk.CTkFont(size=12,weight="bold")).pack(side="left",padx=1)
         self._add_product_row(default=True)
@@ -678,7 +658,7 @@ class ContractPage(ctk.CTkFrame):
         rf=ctk.CTkFrame(self.product_container,fg_color="transparent")
         rf.pack(fill="x",pady=2)
         entries={}
-        for fn in ["物料名称","项目号","尺寸","单位","数量","单价"]:
+        for fn in ["物料名称","项目号","材料结构","尺寸","单位","数量","单价"]:
             e=ctk.CTkEntry(rf,width=88,height=30,font=ctk.CTkFont(size=11))
             e.pack(side="left",padx=1); entries[fn]=e
         amt_label=ctk.CTkLabel(rf,text="",width=88,anchor="center",
@@ -699,7 +679,7 @@ class ContractPage(ctk.CTkFrame):
         entries["单价"].bind("<KeyRelease>",_calc_amt)
         if default:
             defaults={"物料名称":"青源堂红黑枸杞原浆礼盒1.8L外盒",
-                "项目号":"81014365","尺寸":"350*168*93","单位":"个",
+                "项目号":"81014365","材料结构":"","尺寸":"350*168*93","单位":"个",
                 "数量":"5000","单价":"4.3","备注":""}
             for k,v in defaults.items():
                 entries[k].insert(0,v)
@@ -749,6 +729,7 @@ class ContractPage(ctk.CTkFrame):
             p={}
             p["name"]=e["物料名称"].get().strip()
             p["item_no"]=e["项目号"].get().strip()
+            p["material_struct"]=e["材料结构"].get().strip()
             p["size"]=e["尺寸"].get().strip()
             p["unit"]=e["单位"].get().strip()
             p["qty"]=e["数量"].get().strip()
@@ -770,7 +751,6 @@ class ContractPage(ctk.CTkFrame):
         contract_date=self.entry_contract_date.get().strip()
         material_name=self._get_material_name()
         products=self._get_products()
-        settlement=self.settlement_var.get()
         pa=self.party_a.copy()
         pb=dict(self.party_b)
 
@@ -787,14 +767,14 @@ class ContractPage(ctk.CTkFrame):
 
         try:
             self._do_generate(save_path,contract_no,contract_date,
-                material_name,pa,pb,products,settlement)
+                material_name,pa,pb,products)
             messagebox.showinfo("成功",f"合同已生成：\n{save_path}")
         except Exception as e:
             messagebox.showerror("生成失败",f"错误：\n{str(e)}")
             import traceback; traceback.print_exc()
 
     def _do_generate(self,save_path,contract_no,contract_date,
-                     material_name,pa,pb,products,settlement):
+                     material_name,pa,pb,products):
         template=DEFAULT_TEMPLATE
         if not os.path.exists(template):
             raise FileNotFoundError(f"模板不存在：\n{template}")
@@ -807,7 +787,7 @@ class ContractPage(ctk.CTkFrame):
             zf.extractall(unpack_dir)
         self._replace_header(unpack_dir,contract_no)
         self._replace_document(unpack_dir,contract_no,contract_date,
-            material_name,pa,pb,products,settlement)
+            material_name,pa,pb,products)
         self._repack_docx(unpack_dir,save_path)
         shutil.rmtree(tmp_dir,ignore_errors=True)
 
@@ -830,7 +810,7 @@ class ContractPage(ctk.CTkFrame):
 
     # ── 正文替换 ──
     def _replace_document(self,unpack_dir,contract_no,contract_date,
-                          material_name,pa,pb,products,settlement):
+                          material_name,pa,pb,products):
         """替换合同正文：适配干净模板（无预填乙方数据）"""
         dp=os.path.join(unpack_dir,"word","document.xml")
         if not os.path.exists(dp): return
@@ -841,7 +821,6 @@ class ContractPage(ctk.CTkFrame):
         pb_full = pb.get("full_name","")
         pb_contact = pb.get("contact","")
         pb_phone = pb.get("phone","")
-        pay_method = pb.get("payment_method","电汇")
         account_name = pb.get("account_name","")
         bank = pb.get("bank","")
         account = pb.get("account","")
@@ -861,27 +840,7 @@ class ContractPage(ctk.CTkFrame):
         if len(tables)>=2:
             self._replace_product_table(tables[1],products)
 
-        # === 4. 结算方式 ===
-        for para in paragraphs:
-            full_text="".join((t.text or "") for t in para.iter(W + 't'))
-            if "天内付清全款" in full_text and "货到票到" in full_text:
-                if settlement=="先款后货":
-                    old_m=re.search(r'1\.\s*货到票到\d+天内付清全款',full_text)
-                    if old_m:
-                        _replace_text_in_xml(para,old_m.group(0),"1.先款后货。")
-                else:
-                    days=settlement.replace("账期","").replace("天","")
-                    _replace_text_in_xml(para,"90",days)
-                break
-
-        # === 5. 付款方式 ===
-        for para in paragraphs:
-            full_text="".join((t.text or "") for t in para.iter(W + 't'))
-            if "付款方式" in full_text and "电汇" in full_text:
-                _replace_text_in_xml(para,"电汇",pay_method)
-                break
-
-        # === 6. 账户信息（干净模板：3个独立段落）===
+        # === 4. 账户信息（干净模板：3个独立段落）===
         for para in paragraphs:
             full_text="".join((t.text or "") for t in para.iter(W + 't'))
             # 账户名称段落
@@ -1082,31 +1041,53 @@ class ContractPage(ctk.CTkFrame):
         except: amt="0.00"
         fields=[
             product.get("name",""),product.get("item_no",""),
+            product.get("material_struct",""),
             product.get("size",""),product.get("unit",""),
             product.get("qty",""),product.get("price",""),
             amt,product.get("note",""),
         ]
         for i,cell in enumerate(cells):
             if i<len(fields):
+                text_val=str(fields[i]) if fields[i] else ""
                 wt_list=list(cell.iter(W + 't'))
                 if wt_list:
-                    wt_list[0].text=str(fields[i]) if fields[i] else ""
+                    wt_list[0].text=text_val
                     for wt in wt_list[1:]: wt.text=""
+                else:
+                    # 模板单元格没有 w:t 元素（如"材质结构""备注"默认空列）
+                    p_list=list(cell.iter(W + 'p'))
+                    if p_list:
+                        r=etree.SubElement(p_list[0],W + 'r')
+                        t=etree.SubElement(r,W + 't')
+                        t.text=text_val
 
     def _update_total_row(self,total_row,total_amount):
         rmb=num_to_rmb_upper(total_amount)
         amt_str=f"{total_amount:.2f}"
+        amt_int_str=f"{total_amount:.0f}"
         for cell in total_row.iter(W + 'tc'):
             ct="".join((t.text or "") for t in cell.iter(W + 't'))
-            if re.search(r'\d+\.?\d*',ct):
-                _replace_text_in_xml(cell,"21500",amt_str)
-                _replace_text_in_xml(cell,"21500.00",amt_str)
-            if "贰万壹仟伍佰元整" in ct:
-                _replace_text_in_xml(cell,"贰万壹仟伍佰元整",rmb)
-            elif re.search(r'[壹贰叁肆伍陆柒捌玖]',ct) and "元" in ct:
-                old_rmb_m=re.search(r'[壹贰叁肆伍陆柒捌玖拾佰仟万亿零元整角分]+',ct)
-                if old_rmb_m:
-                    _replace_text_in_xml(cell,old_rmb_m.group(0),rmb)
+            # 匹配含数字的单元格：替换模板中的旧数字为实际金额
+            num_m=re.search(r'(\d+(?:\.\d+)?)',ct)
+            if num_m:
+                old_num=num_m.group(1)
+                # 判断是整数还是小数
+                if '.' in old_num:
+                    _replace_text_in_xml(cell,old_num,amt_str)
+                else:
+                    # 先尝试替换小数形式，再尝试整数
+                    old_dec=f"{float(old_num):.2f}"
+                    if old_dec in ct:
+                        _replace_text_in_xml(cell,old_dec,amt_str)
+                    else:
+                        _replace_text_in_xml(cell,old_num,amt_int_str)
+                    # 也处理可能存在的 .00 形式
+                    if old_num+".00" in ct:
+                        _replace_text_in_xml(cell,old_num+".00",amt_str)
+            # 匹配含中文大写金额的单元格：替换为实际大写
+            rmb_m=re.search(r'[壹贰叁肆伍陆柒捌玖][壹贰叁肆伍陆柒捌玖拾佰仟万亿零元整角分]*',ct)
+            if rmb_m:
+                _replace_text_in_xml(cell,rmb_m.group(0),rmb)
 
     # ── 重新打包 ──
     def _repack_docx(self,unpack_dir,save_path):

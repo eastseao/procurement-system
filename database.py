@@ -254,7 +254,7 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 buyer_name TEXT DEFAULT '北京同仁堂健康药业（青海）有限公司',
                 buyer_contact TEXT DEFAULT '王维',
-                buyer_phone TEXT DEFAULT '18094719236',
+                buyer_phone TEXT DEFAULT '13897764859',
                 buyer_address TEXT DEFAULT '青海省海西州德令哈市同仁堂路1号',
                 payment_terms TEXT DEFAULT '按协议条件付款',
                 transport_method TEXT DEFAULT '物料或者专车请提前说明',
