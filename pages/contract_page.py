@@ -10,7 +10,7 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import tkinter as tk
-import os, sys, json, re, tempfile, zipfile, shutil
+import os, sys, re, tempfile, zipfile, shutil
 from lxml import etree
 from datetime import datetime
 
@@ -22,8 +22,6 @@ def _get_resource_path(relative_path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
 DEFAULT_TEMPLATE = _get_resource_path("assets/contract_template.docx")
-SUPPLIERS_FILE   = _get_resource_path("assets/suppliers.json")
-PARTY_A_FILE     = _get_resource_path("assets/party_a.json")
 
 # ═══ 人民币大写 ═══
 def num_to_rmb_upper(num):
@@ -126,41 +124,6 @@ def _replace_all_text_in_xml(root_or_elem, old_text, new_text):
         result = True
     return result
 
-# ═══ 数据加载/保存 ═══
-def _load_suppliers():
-    if not os.path.exists(SUPPLIERS_FILE): return []
-    try:
-        with open(SUPPLIERS_FILE,"r",encoding="utf-8") as f:
-            return json.load(f).get("suppliers",[])
-    except: return []
-
-def _save_suppliers(suppliers):
-    os.makedirs(os.path.dirname(SUPPLIERS_FILE),exist_ok=True)
-    with open(SUPPLIERS_FILE,"w",encoding="utf-8") as f:
-        json.dump({"suppliers":suppliers},f,ensure_ascii=False,indent=2)
-
-def _load_party_a():
-    defaults = {
-        "company_name":"北京同仁堂健康药业（青海）有限公司",
-        "legal_rep":"施能文",
-        "address":"",
-        "contact":"龙存英",
-        "phone":"13897764859",
-    }
-    if not os.path.exists(PARTY_A_FILE): return defaults
-    try:
-        with open(PARTY_A_FILE,"r",encoding="utf-8") as f:
-            data = json.load(f)
-        for k in defaults:
-            if k not in data: data[k]=defaults[k]
-        return data
-    except: return defaults
-
-def _save_party_a(data):
-    os.makedirs(os.path.dirname(PARTY_A_FILE),exist_ok=True)
-    with open(PARTY_A_FILE,"w",encoding="utf-8") as f:
-        json.dump(data,f,ensure_ascii=False,indent=2)
-
 # ═══ 对话框 ═══
 class SupplierDialog(ctk.CTkToplevel):
     def __init__(self, parent, supplier=None, on_save=None):
@@ -258,8 +221,8 @@ class ContractPage(ctk.CTkFrame):
         super().__init__(parent, fg_color=C["bg"], corner_radius=0)
         self.db=db; self.C=C
         self.product_rows=[]
-        self.suppliers=_load_suppliers()
-        self.party_a=_load_party_a()
+        self.suppliers=self.db.get_contract_suppliers()
+        self.party_a=self.db.get_contract_party_a()
         # 内部存储乙方数据
         self.party_b = {
             "full_name":"","legal_rep":"","address":"",
@@ -269,7 +232,6 @@ class ContractPage(ctk.CTkFrame):
         }
         # 确认状态：是否已确认供应商
         self.supplier_confirmed = False
-        self._next_supplier_id=max([s.get("id",0) for s in self.suppliers],default=0)+1
         self._build_ui()
 
     # ── UI ──
@@ -341,7 +303,7 @@ class ContractPage(ctk.CTkFrame):
     def _open_party_a_config(self):
         PartyAConfigDialog(self,self.party_a,self._save_party_a_config)
     def _save_party_a_config(self,data):
-        self.party_a=data; _save_party_a(data)
+        self.party_a=data; self.db.update_contract_party_a(data)
         messagebox.showinfo("成功","甲方配置已保存")
 
     # ── 供应商检索 ──
@@ -492,18 +454,24 @@ class ContractPage(ctk.CTkFrame):
         SupplierDialog(self,supplier=supplier,
             on_save=lambda data:self._update_supplier(supplier,data))
     def _save_new_supplier(self,data):
-        data["id"]=self._next_supplier_id; self._next_supplier_id+=1
-        self.suppliers.append(data); _save_suppliers(self.suppliers)
+        data.setdefault("payment_method","电汇")
+        data.setdefault("remark","")
+        sid=self.db.save_contract_supplier(data)
+        data["id"]=sid
+        self.suppliers=self.db.get_contract_suppliers()
         self._refresh_combo()
         messagebox.showinfo("成功",f"供应商 {data['short_name']} 已添加")
     def _update_supplier(self,old,data):
-        for k,v in data.items(): old[k]=v
-        _save_suppliers(self.suppliers)
+        data.setdefault("payment_method",old.get("payment_method","电汇"))
+        data.setdefault("remark",old.get("remark",""))
+        self.db.update_contract_supplier(old["id"],data)
+        self.suppliers=self.db.get_contract_suppliers()
         self._refresh_combo()
         messagebox.showinfo("成功",f"供应商 {data['short_name']} 已更新")
     def _delete_supplier(self,supplier,dialog,lf):
         if messagebox.askyesno("确认删除",f"确定要删除供应商 [{supplier.get('short_name')}] 吗？"):
-            self.suppliers.remove(supplier); _save_suppliers(self.suppliers)
+            self.db.delete_contract_supplier(supplier["id"])
+            self.suppliers=self.db.get_contract_suppliers()
             self._refresh_combo(); self._refresh_supplier_list(dialog,lf)
     def _refresh_combo(self):
         names=[s["short_name"] for s in self.suppliers]

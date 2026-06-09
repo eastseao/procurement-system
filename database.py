@@ -282,8 +282,44 @@ class Database:
         """)
         c.execute("INSERT OR IGNORE INTO quotation_supplier(id) VALUES(1)")
 
+        # ====== 合同供应商表 (v1.9.0 从 JSON 迁移) ======
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS contract_suppliers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                short_name TEXT DEFAULT '',
+                full_name TEXT DEFAULT '',
+                legal_rep TEXT DEFAULT '',
+                address TEXT DEFAULT '',
+                contact TEXT DEFAULT '',
+                auth_rep TEXT DEFAULT '',
+                phone TEXT DEFAULT '',
+                fax TEXT DEFAULT '',
+                payment_days TEXT DEFAULT '90',
+                payment_method TEXT DEFAULT '电汇',
+                account_name TEXT DEFAULT '',
+                bank TEXT DEFAULT '',
+                account TEXT DEFAULT '',
+                remark TEXT DEFAULT '',
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+
+        # ====== 合同甲方配置表 (v1.9.0 从 JSON 迁移) ======
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS contract_party_a (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                company_name TEXT DEFAULT '北京同仁堂健康药业（青海）有限公司',
+                legal_rep TEXT DEFAULT '施能文',
+                address TEXT DEFAULT '',
+                contact TEXT DEFAULT '龙存英',
+                phone TEXT DEFAULT '13897764859'
+            )
+        """)
+        c.execute("INSERT OR IGNORE INTO contract_party_a(id) VALUES(1)")
+
         self.conn.commit()
         self._migrate_tables()
+        self._import_json_data()
 
     def _migrate_tables(self):
         """数据库迁移：检测并修复所有表的列名和结构不匹配"""
@@ -477,6 +513,77 @@ class Database:
                     pass
 
         self.conn.commit()
+
+    def _import_json_data(self):
+        """首次启动时从旧版 JSON 文件导入数据到数据库（v1.9.0）"""
+        c = self.conn.cursor()
+
+        # 导入合同供应商
+        c.execute("SELECT COUNT(*) FROM contract_suppliers")
+        if c.fetchone()[0] == 0:
+            # 尝试从 assets/suppliers.json 导入
+            import sys
+            json_paths = [
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "suppliers.json"),
+            ]
+            if hasattr(sys, '_MEIPASS'):
+                json_paths.insert(0, os.path.join(sys._MEIPASS, "assets", "suppliers.json"))
+            for jp in json_paths:
+                if os.path.exists(jp):
+                    try:
+                        with open(jp, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                        suppliers = data.get("suppliers", [])
+                        for s in suppliers:
+                            c.execute("""
+                                INSERT INTO contract_suppliers(short_name, full_name, legal_rep,
+                                address, contact, auth_rep, phone, fax, payment_days,
+                                payment_method, account_name, bank, account)
+                                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+                            """, (
+                                s.get("short_name",""), s.get("full_name",""), s.get("legal_rep",""),
+                                s.get("address",""), s.get("contact",""), s.get("auth_rep",""),
+                                s.get("phone",""), s.get("fax",""), s.get("payment_days","90"),
+                                s.get("payment_method","电汇"), s.get("account_name",""),
+                                s.get("bank",""), s.get("account","")
+                            ))
+                        if suppliers:
+                            self.conn.commit()
+                    except Exception:
+                        pass
+                    break
+
+        # 导入合同甲方配置
+        c.execute("SELECT company_name, legal_rep, contact, phone FROM contract_party_a WHERE id=1")
+        row = c.fetchone()
+        # 如果还是默认值（未被用户编辑过），尝试从JSON导入旧数据
+        if row and row[0] == "北京同仁堂健康药业（青海）有限公司":
+            import sys
+            json_paths = [
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "party_a.json"),
+            ]
+            if hasattr(sys, '_MEIPASS'):
+                json_paths.insert(0, os.path.join(sys._MEIPASS, "assets", "party_a.json"))
+            for jp in json_paths:
+                if os.path.exists(jp):
+                    try:
+                        with open(jp, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                        c.execute("""
+                            UPDATE contract_party_a SET company_name=?, legal_rep=?,
+                            address=?, contact=?, phone=?
+                            WHERE id=1
+                        """, (
+                            data.get("company_name","北京同仁堂健康药业（青海）有限公司"),
+                            data.get("legal_rep","施能文"),
+                            data.get("address",""),
+                            data.get("contact","龙存英"),
+                            data.get("phone","13897764859"),
+                        ))
+                        self.conn.commit()
+                    except Exception:
+                        pass
+                    break
 
     # ====== 项目管理 ======
     def get_projects(self):
@@ -1038,6 +1145,70 @@ class Database:
                 contact_person=:contact_person, phone=:phone,
                 address=:address, quote_date=:quote_date,
                 quote_validity=:quote_validity
+            WHERE id=1
+        """, data)
+        self.conn.commit()
+
+    # ====== 合同供应商 (v1.9.0 从 JSON 迁移) ======
+    def get_contract_suppliers(self):
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM contract_suppliers ORDER BY id")
+        return [dict(r) for r in c.fetchall()]
+
+    def save_contract_supplier(self, data):
+        c = self.conn.cursor()
+        c.execute("""
+            INSERT INTO contract_suppliers(short_name, full_name, legal_rep,
+            address, contact, auth_rep, phone, fax, payment_days,
+            payment_method, account_name, bank, account, remark)
+            VALUES(:short_name, :full_name, :legal_rep,
+            :address, :contact, :auth_rep, :phone, :fax, :payment_days,
+            :payment_method, :account_name, :bank, :account, :remark)
+        """, data)
+        self.conn.commit()
+        return c.lastrowid
+
+    def update_contract_supplier(self, sid, data):
+        c = self.conn.cursor()
+        data["id"] = sid
+        c.execute("""
+            UPDATE contract_suppliers SET short_name=:short_name, full_name=:full_name,
+            legal_rep=:legal_rep, address=:address, contact=:contact,
+            auth_rep=:auth_rep, phone=:phone, fax=:fax,
+            payment_days=:payment_days, payment_method=:payment_method,
+            account_name=:account_name, bank=:bank, account=:account,
+            remark=:remark
+            WHERE id=:id
+        """, data)
+        self.conn.commit()
+
+    def delete_contract_supplier(self, sid):
+        c = self.conn.cursor()
+        c.execute("DELETE FROM contract_suppliers WHERE id=?", (sid,))
+        self.conn.commit()
+
+    # ====== 合同甲方配置 (v1.9.0 从 JSON 迁移) ======
+    def get_contract_party_a(self):
+        c = self.conn.cursor()
+        c.execute("SELECT company_name, legal_rep, address, contact, phone FROM contract_party_a WHERE id=1")
+        row = c.fetchone()
+        if row:
+            return {
+                "company_name": row[0], "legal_rep": row[1],
+                "address": row[2], "contact": row[3], "phone": row[4],
+            }
+        return {
+            "company_name": "北京同仁堂健康药业（青海）有限公司",
+            "legal_rep": "施能文", "address": "",
+            "contact": "龙存英", "phone": "13897764859",
+        }
+
+    def update_contract_party_a(self, data):
+        c = self.conn.cursor()
+        c.execute("""
+            UPDATE contract_party_a SET company_name=:company_name,
+            legal_rep=:legal_rep, address=:address,
+            contact=:contact, phone=:phone
             WHERE id=1
         """, data)
         self.conn.commit()
