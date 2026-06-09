@@ -12,8 +12,8 @@ import threading
 import ssl
 from datetime import datetime
 
-__version__ = "1.9.0"
-__version_date__ = "2026-06-09"
+__version__ = "1.9.5"
+__version_date__ = "2026-06-10"
 
 # ═══════════════════════════════════════════════════════
 # GitHub 仓库信息（上传后请修改为你的实际仓库地址）

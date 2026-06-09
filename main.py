@@ -97,6 +97,8 @@ COLORS = {
     "text_secondary":  "#8B7355",   # 柔和暖棕
     "border":          "#D4C5B2",
     "divider":         "#E8DDD0",
+    "nav_group_bg":   "#E8D5C4",   # 分组背景（选中/展开）
+    "nav_indicator":   "#C1816D",   # 选中指示条陶土色
 }
 
 
@@ -341,9 +343,9 @@ class App(ctk.CTk):
         later_btn.pack(side="right")
 
     def _build_ui(self):
-        # ── 侧边栏 ──────────────────────────────────────
+        # ── 侧边栏（分组折叠式）──────────────────────────
         self.sidebar = ctk.CTkFrame(
-            self, width=90, fg_color=COLORS["sidebar"],
+            self, width=180, fg_color=COLORS["sidebar"],
             corner_radius=0, border_width=0
         )
         self.sidebar.pack(side="left", fill="y")
@@ -353,99 +355,219 @@ class App(ctk.CTk):
         self.divider = tk.Frame(self, bg=COLORS["border"], width=1)
         self.divider.pack(side="left", fill="y")
 
-        # 加载导航栏图标（1.5版本原始彩色图标）
+        # 加载导航栏图标
         self._nav_icon_images = {}
         if PIL_AVAILABLE:
-            for key, path in NAV_ICON_PATHS.items():
+            for k, path in NAV_ICON_PATHS.items():
                 if os.path.exists(path):
                     try:
-                        # 直接使用原图
                         img = Image.open(path)
-                        self._nav_icon_images[key] = ctk.CTkImage(
-                            light_image=img, size=(28, 28))
+                        self._nav_icon_images[k] = ctk.CTkImage(
+                            light_image=img, size=(24, 24))
                     except Exception:
-                        self._nav_icon_images[key] = None
+                        self._nav_icon_images[k] = None
                 else:
-                    self._nav_icon_images[key] = None
+                    self._nav_icon_images[k] = None
 
-        # ── 导航按钮区域（均匀分布）─────────────────────
-        self.nav_area = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.nav_area.pack(side="top", fill="both", expand=True)
-
-        nav_items = [
-            ("dashboard",  "仪表盘"),
-            ("packaging",  "物料下单"),
-            ("quotation",  "报价单"),
-            ("contract",   "合同生成"),
-            ("query",      "物料查询"),
-            ("supplier",   "供应商"),
-            ("collection", "催款记录"),
-            ("purchase",   "采购垫付"),
-            ("travel",     "差旅报销"),
-            ("memo",       "备忘录"),
-        ]
-        self.nav_buttons = {}
-        for key, label in nav_items:
-            icon = self._nav_icon_images.get(key)
-            btn = ctk.CTkButton(
-                self.nav_area,
-                text=label,
-                image=icon,
-                compound="top",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
-                fg_color="transparent",
-                text_color=COLORS["sidebar_text"],
-                hover_color=COLORS["sidebar_hover"],
-                anchor="center",
-                height=58,
-                corner_radius=6,
-                command=lambda k=key: self._switch_page(k),
-            )
-            btn.pack(fill="x", padx=8, pady=1, expand=True)
-            self.nav_buttons[key] = btn
-
-        settings_icon = self._nav_icon_images.get("settings")
-        self.settings_btn = ctk.CTkButton(
-            self.nav_area,
-            text="设置",
-            image=settings_icon,
-            compound="top",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
-            fg_color="transparent",
-            text_color=COLORS["sidebar_text"],
-            hover_color=COLORS["sidebar_hover"],
-            anchor="center",
-            height=58,
-            corner_radius=6,
-            command=self._open_settings,
+        # ── 导航滚动容器 ─────────────────────────────────
+        self.nav_canvas = ctk.CTkScrollableFrame(
+            self.sidebar, fg_color="transparent", corner_radius=0,
+            scrollbar_button_color=COLORS["border"],
+            scrollbar_button_hover_color=COLORS["sidebar_hover"],
         )
-        self.settings_btn.pack(fill="x", padx=8, pady=1, expand=True)
+        self.nav_canvas.pack(side="top", fill="both", expand=True, padx=0, pady=(8, 0))
 
+        # ── 导航分组结构 ─────────────────────────────────
+        self.NAV_GROUPS = [
+            {
+                "label": "看板",
+                "items": [("dashboard", "看板", "dashboard")],
+            },
+            {
+                "label": "采购",
+                "items": [
+                    ("packaging",  "下单",   "packaging"),
+                    ("quotation",  "报价",   "quotation"),
+                    ("contract",   "合同",   "contract"),
+                    ("query",      "查询",   "query"),
+                    ("supplier",   "厂家",   "supplier"),
+                ],
+            },
+            {
+                "label": "财务",
+                "items": [
+                    ("collection", "应付",   "collection"),
+                    ("purchase",   "垫付",   "purchase"),
+                    ("travel",     "报销",   "travel"),
+                ],
+            },
+            {
+                "label": "工具",
+                "items": [
+                    ("memo",       "待办",   "memo"),
+                    ("settings",   "设置",   "settings"),
+                ],
+            },
+        ]
+
+        # 加载折叠状态
+        self._nav_collapsed = self._load_nav_state()
+
+        self.nav_buttons = {}
+        self._group_widgets = {}
+
+        for group in self.NAV_GROUPS:
+            self._add_group_header(group)
+            for item_key, item_label, icon_key in group["items"]:
+                self._add_nav_item(group, item_key, item_label, icon_key)
 
         # ── 主内容区域 ──
         self.main_area = ctk.CTkFrame(self, fg_color=COLORS["bg"], corner_radius=0)
         self.main_area.pack(side="left", fill="both", expand=True)
 
+    # ── 导航栏分组折叠辅助方法 ──────────────────────────
+    def _add_group_header(self, group):
+        """添加分组标题（可点击折叠/展开）"""
+        label = group["label"]
+        key = label
+        is_collapsed = key in self._nav_collapsed
+
+        arrow = ">" if is_collapsed else "v"
+        badge = " [{}]".format(len(group["items"])) if len(group["items"]) > 1 else ""
+        header_text = "{} {}{}".format(arrow, label, badge)
+
+        header_btn = ctk.CTkButton(
+            self.nav_canvas,
+            text=header_text,
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+            fg_color="transparent",
+            text_color=COLORS["sidebar_text"],
+            hover_color=COLORS["sidebar_hover"],
+            anchor="w",
+            height=36,
+            corner_radius=0,
+            command=lambda g=group: self._toggle_group(g),
+        )
+        header_btn.pack(fill="x", padx=4, pady=(8, 2))
+
+        underline = ctk.CTkFrame(self.nav_canvas, height=1, fg_color=COLORS["divider"], corner_radius=0)
+        underline.pack(fill="x", padx=8, pady=(0, 2))
+
+        # 子项容器：所有子项放在这个 frame 里，折叠时隐藏整个容器
+        content_frame = ctk.CTkFrame(self.nav_canvas, fg_color="transparent", corner_radius=0)
+        if not is_collapsed:
+            # 展开状态：显示在 underline 下方
+            content_frame.pack(fill="x", padx=(12, 4), pady=(0, 4), after=underline)
+
+        self._group_widgets[key] = {
+            "header": header_btn,
+            "underline": underline,
+            "content": content_frame,
+        }
+
+    def _add_nav_item(self, group, item_key, item_label, icon_key):
+        """添加导航按钮到分组的 content_frame 中"""
+        key = group["label"]
+        content = self._group_widgets[key]["content"]
+
+        icon = self._nav_icon_images.get(icon_key)
+        btn = ctk.CTkButton(
+            content,
+            text=item_label,
+            image=icon,
+            compound="left",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            fg_color="transparent",
+            text_color=COLORS["sidebar_text"],
+            hover_color=COLORS["sidebar_hover"],
+            anchor="w",
+            height=40,
+            corner_radius=6,
+            command=lambda k=item_key: self._switch_page(k),
+        )
+        btn.pack(fill="x", padx=0, pady=1)
+
+        self.nav_buttons[item_key] = btn
+
+    def _toggle_group(self, group):
+        """切换分组折叠/展开状态"""
+        key = group["label"]
+        widgets = self._group_widgets[key]
+        content = widgets["content"]
+        underline = widgets["underline"]
+
+        if key in self._nav_collapsed:
+            # 展开：显示 content_frame，放在 underline 之后
+            del self._nav_collapsed[key]
+            content.pack(fill="x", padx=(12, 4), pady=(0, 4), after=underline)
+        else:
+            # 折叠：隐藏 content_frame
+            self._nav_collapsed[key] = True
+            content.pack_forget()
+
+        is_collapsed = key in self._nav_collapsed
+        arrow = ">" if is_collapsed else "v"
+        badge = " [{}]".format(len(group["items"])) if len(group["items"]) > 1 else ""
+        widgets["header"].configure(text="{} {}{}".format(arrow, key, badge))
+
+        self._save_nav_state()
+
+    def _save_nav_state(self):
+        """保存导航折叠状态到 settings.txt"""
+        try:
+            settings = load_settings()
+            collapsed_str = ",".join(self._nav_collapsed.keys())
+            settings["nav_collapsed"] = collapsed_str
+            settings_path = os.path.join(_data_dir, "settings.txt")
+            with open(settings_path, "w", encoding="utf-8") as f:
+                for k, v in settings.items():
+                    f.write("{}={}\n".format(k, v))
+        except Exception:
+            pass
+
+    def _load_nav_state(self):
+        """从 settings.txt 加载导航折叠状态（兼容旧版本的分组名称）"""
+        try:
+            settings = load_settings()
+            collapsed_str = settings.get("nav_collapsed", "")
+            if collapsed_str:
+                collapsed = {}
+                for k in collapsed_str.split(","):
+                    k = k.strip()
+                    if not k:
+                        continue
+                    # 兼容旧版本名称
+                    if k == "采购管理":
+                        k = "采购"
+                    elif k == "财务管理":
+                        k = "财务"
+                    collapsed[k] = True
+                return collapsed
+        except Exception:
+            pass
+        return {}
+
     def _switch_page(self, key):
+        """切换页面并更新导航栏选中状态"""
         for k, btn in self.nav_buttons.items():
-            if k == key:
-                btn.configure(
-                    fg_color=COLORS["sidebar_active"],
-                    text_color=COLORS["sidebar_active_text"],
-                )
-            else:
-                btn.configure(
-                    fg_color="transparent",
-                    text_color=COLORS["sidebar_text"],
-                )
-        # 重置设置按钮高亮
-        self.settings_btn.configure(fg_color="transparent", text_color=COLORS["sidebar_text"])
+            btn.configure(
+                fg_color="transparent",
+                text_color=COLORS["sidebar_text"],
+                border_width=0,
+            )
+
+        if key in self.nav_buttons:
+            self.nav_buttons[key].configure(
+                fg_color=COLORS["sidebar_active"],
+                text_color=COLORS["sidebar_active_text"],
+                border_width=0,
+            )
 
         for widget in self.main_area.winfo_children():
             widget.destroy()
 
         if key == "dashboard":
-            self.current_page = DashboardPage(self.main_area, self.db, COLORS)
+            self.current_page = DashboardPage(self.main_area, self.db, COLORS, switch_page=self._switch_page)
         elif key == "packaging":
             self.current_page = PackagingPage(self.main_area, self.db, COLORS)
         elif key == "quotation":
@@ -464,28 +586,98 @@ class App(ctk.CTk):
             self.current_page = MemoPage(self.main_area, self.db, COLORS)
         elif key == "contract":
             self.current_page = ContractPage(self.main_area, self.db, COLORS)
-        elif key == "tangxun":
-            self.current_page = TangxunPage(self.main_area, self.db, COLORS)
         elif key == "settings":
             self.current_page = SettingsPage(self.main_area, self.db, COLORS)
 
         if self.current_page:
             self.current_page.pack(fill="both", expand=True)
-
     def _open_settings(self):
         """打开设置页面"""
         self._switch_page("settings")
-        # 取消所有导航按钮高亮
-        for k, btn in self.nav_buttons.items():
-            btn.configure(fg_color="transparent", text_color=COLORS["sidebar_text"])
-        # 高亮设置按钮
-        self.settings_btn.configure(
-            fg_color=COLORS["sidebar_active"],
-            text_color=COLORS["sidebar_active_text"],
-        )
+        """关闭窗口：隐藏到托盘（不退出，托盘始终显示）"""
+        self.withdraw()  # 隐藏窗口，托盘图标保持
 
+    def _start_tray(self):
+        """启动时创建系统托盘图标"""
+        if self._tray_icon is not None:
+            return
+        self._tray_thread = threading.Thread(target=self._run_tray, daemon=True)
+        self._tray_thread.start()
 
+    def _run_tray(self):
+        """在新线程中运行托盘图标（pystray 的事件循环）"""
+        try:
+            # 加载托盘图标图片
+            if os.path.exists(ICO_PATH):
+                img = PILImage.open(ICO_PATH)
+                img = img.resize((64, 64), PILImage.LANCZOS)
+            else:
+                # 备用：创建纯色图标（莫兰迪陶土色）
+                img = PILImage.new("RGBA", (64, 64), (193, 129, 109, 255))
 
+            menu = pystray.Menu(
+                pystray.MenuItem(
+                    "显示窗口",
+                    self._on_tray_restore,
+                    default=True,
+                ),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem(
+                    "退出应用",
+                    self._on_tray_quit,
+                ),
+            )
+
+            self._tray_icon = pystray.Icon(
+                "采购助手",
+                img,
+                f"采购助手 V{__version__}",
+                menu,
+            )
+            self._tray_icon.run()
+        except Exception:
+            # 托盘启动失败，恢复窗口
+            self.after(0, self._do_restore)
+
+    def _on_tray_restore(self, icon=None, item=None):
+        """托盘菜单：显示窗口（托盘图标始终保持）"""
+        self.after(0, self._do_restore)
+
+    def _on_tray_quit(self, icon=None, item=None):
+        """托盘菜单：退出应用"""
+        if self._tray_icon:
+            self._tray_icon.stop()
+            self._tray_icon = None
+        self.after(0, self._quit_app)
+
+    def _do_restore(self):
+        """在主线程中恢复窗口（托盘图标保持不销毁）"""
+        self.deiconify()
+        self.lift()
+        self.focus_force()
+        self.attributes("-topmost", True)
+        self.after(100, lambda: self.attributes("-topmost", False))
+
+    def _quit_app(self):
+        """完全退出应用"""
+        if self._tray_icon:
+            try:
+                self._tray_icon.stop()
+            except Exception:
+                pass
+            self._tray_icon = None
+
+        try:
+            self.db.close()
+        except Exception:
+            pass
+
+        self.destroy()
+        try:
+            import sys
+            sys.exit(0)
+        except SystemExit:
+            pass
 
 
     def _on_closing(self):

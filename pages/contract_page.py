@@ -727,9 +727,18 @@ class ContractPage(ctk.CTkFrame):
         if not material_name: messagebox.showerror("错误","请输入下单物料名称"); return
         if not products: messagebox.showerror("错误","请至少添加一个产品"); return
 
+        # 文件名格式：采购合同_供应商全称_YYYY_MM_DD_物料名称
+        date_str=datetime.now().strftime("%Y_%m_%d")
+        supplier_name=pb.get("full_name","")[:30]  # 供应商全称，最长30字符
+        material_short=material_name[:20] if material_name else "未命名"
+        # 替换Windows文件名非法字符
+        import re as _re
+        supplier_name=_re.sub(r'[\\/:*?"<>|]', '', supplier_name)
+        material_short=_re.sub(r'[\\/:*?"<>|]', '', material_short)
+        initial_name=f"采购合同_{supplier_name}_{date_str}_{material_short}.docx"
         save_path=filedialog.asksaveasfilename(
             title="保存合同",
-            initialfile=f"采购合同_{pb.get('full_name','')}_{contract_no}.docx",
+            initialfile=initial_name,
             defaultextension=".docx", filetypes=[("Word文档","*.docx")])
         if not save_path: return
 

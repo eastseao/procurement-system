@@ -6,6 +6,8 @@ import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import tkinter as tk
 from datetime import datetime
+import re, os, tempfile, shutil, zipfile
+from lxml import etree
 
 
 # 配色统一使用主窗口传入的 self.C（莫兰迪暖色）
@@ -84,6 +86,14 @@ class PackagingPage(ctk.CTkFrame):
             fg_color=self.C["danger"], hover_color="#A85A5A",
             font=ctk.CTkFont(size=13, weight="bold"),
             command=self._open_form,
+        ).pack(side="left", padx=4)
+
+        # ── 上传合同按钮 (v1.9.2 新增) ──
+        ctk.CTkButton(
+            btn_frame, text="📄 上传合同", width=120, height=34,
+            fg_color="#4A90D6", hover_color="#3A7BC4",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=self._upload_contract,
         ).pack(side="left", padx=4)
 
         # ── 筛选栏 ──
@@ -408,6 +418,197 @@ class PackagingPage(ctk.CTkFrame):
         except Exception as e:
             import traceback
             messagebox.showerror("打开表单失败", f"{e}\n\n{traceback.format_exc()}")
+
+    # ── v1.9.2 新增：上传合同自动生成记录 ──
+    def _upload_contract(self):
+        """上传合同并自动生成物料下单记录"""
+        filepath = filedialog.askopenfilename(
+            title="选择合同文件",
+            filetypes=[("Word文档", "*.docx"), ("所有文件", "*.*")]
+        )
+        if not filepath:
+            return
+
+        try:
+            data = self._parse_contract(filepath)
+            if not data or not data.get("material_name"):
+                messagebox.showerror(
+                    "解析失败",
+                    "无法从合同中提取有效信息\n请确保上传的是正确的合同文件"
+                )
+                return
+
+            # 确保项目存在
+            project = data.get("project", "默认项目")
+            try:
+                self.db.add_project(project)
+            except Exception:
+                pass
+
+            # 合同状态默认为"待签批"
+            data["contract_status"] = "待签批"
+            data["project"] = project
+
+            # 补全数据库所需的所有字段默认值
+            _defaults = {
+                "compare_date": "",
+                "compare_remark": "",
+                "contract_remark": "",
+                "notify_date": "",
+                "expected_delivery_date": "",
+                "notify_remark": "",
+                "production_cycle": "",
+                "expected_ship_date": "",
+                "production_remark": "",
+                "ship_date": "",
+                "ship_method": "",
+                "tracking_no": "",
+                "expected_arrival": "",
+                "notify_warehouse": "",
+                "archived": 0,
+            }
+            for _k, _v in _defaults.items():
+                data.setdefault(_k, _v)
+
+            # 保存记录
+            self.db.save_packaging(data)
+
+            # 刷新表格
+            self._load_data()
+
+            material_name = data.get("material_name", "")
+            messagebox.showinfo(
+                "成功",
+                f"已从合同生成物料下单记录：\n{material_name}"
+            )
+        except Exception as e:
+            import traceback
+            messagebox.showerror("上传失败", f"错误：\n{str(e)}")
+            traceback.print_exc()
+
+    def _parse_contract(self, filepath):
+        """解析合同 .docx，提取物料信息"""
+        W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+
+        tmp_dir = tempfile.mkdtemp(prefix="contract_parse_")
+        try:
+            # 解压 .docx
+            with zipfile.ZipFile(filepath, 'r') as zf:
+                zf.extractall(tmp_dir)
+
+            # 解析 document.xml
+            doc_path = os.path.join(tmp_dir, 'word', 'document.xml')
+            if not os.path.exists(doc_path):
+                return None
+
+            tree = etree.parse(doc_path)
+            root = tree.getroot()
+
+            data = {}
+
+            # ── 1. 查找产品表格，提取物料信息 ──
+            tables = root.findall('.//' + W + 'tbl')
+
+            for tbl in tables:
+                rows = tbl.findall('.//' + W + 'tr')
+                if len(rows) < 2:
+                    continue
+
+                # 检查表头
+                header_row = rows[0]
+                headers = []
+                for cell in header_row.findall('.//' + W + 'tc'):
+                    cell_text = ''.join(
+                        t.text or '' for t in cell.findall('.//' + W + 't'))
+                    headers.append(cell_text.strip())
+
+                header_str = ' '.join(headers)
+                # 检查是否是产品表格
+                if ('物料名称' in header_str or
+                        '物料项目号' in header_str or
+                        '产品名称' in header_str):
+                    # 提取数据行（第一行数据）
+                    for row_idx in range(1, len(rows)):
+                        data_row = rows[row_idx]
+                        cells = data_row.findall('.//' + W + 'tc')
+
+                        row_data = {}
+                        for i, cell in enumerate(cells):
+                            cell_text = ''.join(
+                                t.text or '' for t in cell.findall('.//' + W + 't'))
+                            cell_text = cell_text.strip()
+
+                            if i < len(headers):
+                                header = headers[i]
+                                if ('物料名称' in header or
+                                        '产品名称' in header):
+                                    row_data['material_name'] = cell_text
+                                elif '项目号' in header:
+                                    row_data['project_no'] = cell_text
+                                elif '数量' in header:
+                                    row_data['order_quantity'] = cell_text
+                                elif ('单价' in header and
+                                      '金额' not in header):
+                                    price_match = re.search(r'[\d.]+',
+                                                                  cell_text)
+                                    if price_match:
+                                        try:
+                                            row_data['compare_price'] = float(
+                                                price_match.group())
+                                        except ValueError:
+                                            pass
+
+                        # 只提取第一行有效数据
+                        if row_data.get('material_name'):
+                            data.update(row_data)
+                            break
+
+                    # 找到产品表格后就退出
+                    if data.get('material_name'):
+                        break
+
+            # ── 2. 提取乙方（厂家）名称 ──
+            # 遍历所有段落，查找"乙  方："后面的文本
+            all_paras = root.findall('.//' + W + 'p')
+            factory_name = ""
+            for para in all_paras:
+                para_text = ''.join(
+                    t.text or '' for t in para.findall('.//' + W + 't'))
+
+                # 查找乙方段落
+                if ('乙' in para_text and '方' in para_text and
+                        '甲' not in para_text):
+                    # 获取段落后面的段落（通常乙方名称在下一个段落）
+                    # 或者在本段落后面查找
+                    # 简化的方法：取段落中 "：" 后面的文本
+                    if '：' in para_text:
+                        after_colon = para_text.split('：', 1)[1].strip()
+                        if after_colon and len(after_colon) > 1:
+                            factory_name = after_colon
+                            break
+
+            # 如果上面没找到，尝试另一种方法
+            if not factory_name:
+                full_text = ''.join(
+                    t.text or '' for t in root.iter(W + 't'))
+                # 查找 "乙  方：" 模式
+                party_b_match = re.search(
+                    r'乙\s*方\s*[：:]\s*([^\n\s].{2,50}?)\s*(?:地|联|电|传)',
+                    full_text)
+                if party_b_match:
+                    factory_name = party_b_match.group(1).strip()
+
+            if factory_name:
+                data['order_factory'] = factory_name
+
+            # ── 3. 设置默认值 ──
+            if 'project' not in data:
+                data['project'] = "默认项目"
+
+            return data if data.get('material_name') else None
+
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     def _toggle_archive(self):
         self.show_archived = not getattr(self, "show_archived", False)
