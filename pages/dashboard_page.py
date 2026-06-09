@@ -288,19 +288,20 @@ class DashboardPage(ctk.CTkFrame):
         """后台获取 IP 所在地天气预报（wttr.in，无需 API key）"""
         def _worker():
             try:
-                url = "http://wttr.in/?format=j1"
+                url = "https://wttr.in/?format=j1"
                 req = urllib.request.Request(
                     url,
-                    headers={"User-Agent": "curl/7.0"},
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
                 )
-                with urllib.request.urlopen(req, timeout=8) as resp:
+                with urllib.request.urlopen(req, timeout=10) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     current = data["current_condition"][0]
                     area = data["nearest_area"][0]
                     city = area.get("areaName", [{"value": "未知"}])[0]["value"]
                     temp = current.get("temp_C", "N/A")
                     desc = current.get("weatherDesc", [{"value": ""}])[0]["value"]
-                    emoji = self._weather_emoji(desc)
+                    code = current.get("weatherCode", "113")
+                    emoji = self._weather_emoji(code)
                     weather_text = f"{emoji} {city} {temp}°C {desc}"
                     self.after(0, lambda t=weather_text: self.weather_label.configure(text=t))
             except Exception:
@@ -309,8 +310,9 @@ class DashboardPage(ctk.CTkFrame):
         t = threading.Thread(target=_worker, daemon=True)
         t.start()
 
-    def _weather_emoji(code):
+    def _weather_emoji(self, code):
         """根据 weatherCode 返回 emoji"""
+        code = int(code) if isinstance(code, str) else code
         if code in (113, 116):
             return "☀️"
         if code in (116, 119, 122):

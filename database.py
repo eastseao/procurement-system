@@ -22,7 +22,17 @@ class Database:
         self.data_dir = _get_data_dir(data_dir)
         os.makedirs(self.data_dir, exist_ok=True)
         self.db_path = os.path.join(self.data_dir, "procurement.db")
-        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        # 使用 URI 模式 + rwc 确保可读写创建，防止 PyInstaller 环境下
+        # "unable to open database file" 错误
+        db_uri = self.db_path.replace("\\", "/")
+        try:
+            self.conn = sqlite3.connect(f"file:{db_uri}?mode=rwc", uri=True,
+                                        check_same_thread=False)
+        except Exception:
+            # 回退到标准连接方式
+            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        # 使用内存日志，避免打包后磁盘 journal 权限问题
+        self.conn.execute("PRAGMA journal_mode=MEMORY")
         self.conn.row_factory = sqlite3.Row
         self._init_tables()
 

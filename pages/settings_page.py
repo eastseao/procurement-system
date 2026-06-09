@@ -481,6 +481,7 @@ class SettingsPage(ctk.CTkFrame):
             ("📑 报价单", "生成产品包装报价单，内置Excel模板，支持导出"),
             ("🔍 物料查询", "查询物料信息，支持多条件筛选和导出"),
             ("🏢 供应商管理", "管理供应商信息，维护供应商档案和联系方式"),
+            ("📄 合同生成", "自动生成采购合同，支持自定义模板和数字签名"),
             ("💰 催款记录", "记录催款信息，跟踪款项回收进度"),
             ("🛒 采购垫付", "记录采购垫付款项，管理报销流程"),
             ("✈️ 差旅报销", "差旅费用报销管理，支持粘贴和图片识别"),
@@ -596,27 +597,30 @@ class SettingsPage(ctk.CTkFrame):
         info_container.pack(fill="x", padx=20, pady=(0, 12))
 
         # 左侧：作者头像
-        avatar_frame = ctk.CTkFrame(info_container, fg_color="transparent", width=120)
+        avatar_frame = ctk.CTkFrame(info_container, fg_color="transparent")
         avatar_frame.pack(side="left", padx=(0, 20))
-        avatar_frame.pack_propagate(False)
 
         avatar_path = _get_resource_path("assets/avatar.png")
         if os.path.exists(avatar_path) and PIL_AVAILABLE:
             try:
                 avatar_img = ctk.CTkImage(
                     light_image=Image.open(avatar_path),
-                    size=(100, 100))
+                    size=(200, 200))
                 avatar_label = ctk.CTkLabel(
                     avatar_frame, image=avatar_img, text="")
                 avatar_label.image = avatar_img  # 保持引用
-                avatar_label.pack(pady=10)
+                avatar_label.pack()
             except Exception:
                 pass
         
-        # 右侧：作者信息
+        # 右侧：作者信息（垂直居中于头像高度）
         info_frame = ctk.CTkFrame(info_container, fg_color="transparent")
         info_frame.pack(side="left", fill="both", expand=True)
-
+        
+        # 计算需要的上边距使信息垂直居中（头像200px，信息约100px，所以上边距约50px）
+        spacer = ctk.CTkFrame(info_frame, fg_color="transparent", height=50)
+        spacer.pack()
+        
         author_lines = [
             ("👤", "作者", "EastSeaO"),
             ("🏢", "就职", "北京同仁堂健康药业（青海）有限公司"),

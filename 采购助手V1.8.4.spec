@@ -1,14 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
-# 采购助手 V1.8.2 - PyInstaller打包配置
+# 采购助手 V1.8.4 - PyInstaller打包配置
 import sys
 from pathlib import Path
 
 block_cipher = None
 
-# 需要打包的资源文件
 added_files = [
-    ('assets/logo_40x40.png', 'assets'),
+    ('assets/同仁堂企业LOGO.ico', 'assets'),
     ('assets/同仁堂企业LOGO.png', 'assets'),
+    ('assets/同仁堂火漆印3.jpg', 'assets'),
     ('assets/icon_collapse.png', 'assets'),
     ('assets/icon_expand.png', 'assets'),
     ('assets/同仁堂集团组织架构3.0.html', 'assets'),
@@ -24,6 +24,10 @@ added_files = [
     ('assets/nav_purchase.png', 'assets'),
     ('assets/nav_travel.png', 'assets'),
     ('assets/nav_memo.png', 'assets'),
+    ('assets/nav_contract.png', 'assets'),
+    ('assets/contract_template.docx', 'assets'),
+    ('assets/suppliers.json', 'assets'),
+    ('assets/party_a.json', 'assets'),
     ('assets/nav_settings.png', 'assets'),
     ('pages', 'pages'),
     ('version.py', '.'),
@@ -40,6 +44,7 @@ a = Analysis(
         'ctypes', 'ssl', 'json', 'urllib', 'os', 're',
         'threading', 'webbrowser', 'datetime',
         'openpyxl', 'sqlite3',
+        'docx', 'lxml', 'lxml.etree', 'lxml._elementpath',
     ],
     hookspath=[],
     hooksconfig={},
@@ -60,7 +65,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='ProcurementAssistant-V1.8.2',
+    name='ProcurementAssistant-V1.8.4',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

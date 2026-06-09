@@ -57,6 +57,7 @@ from pages.memo_page import MemoPage
 from pages.quotation_page import QuotationPage
 from pages.dashboard_page import DashboardPage
 from pages.settings_page import SettingsPage, load_settings
+from pages.contract_page import ContractPage
 
 # ── pystray 系统托盘 ──
 try:
@@ -107,7 +108,7 @@ def _get_resource_path(rel_path):
 
 
 ICO_PATH  = _get_resource_path("assets/同仁堂企业LOGO.ico")
-LOGO_PATH          = _get_resource_path("assets/logo_40x40.png")
+LOGO_PATH          = _get_resource_path("assets/同仁堂企业LOGO.png")
 
 # ── 导航栏图标路径 ──
 NAV_ICON_PATHS = {
@@ -120,6 +121,7 @@ NAV_ICON_PATHS = {
     "purchase":   _get_resource_path("assets/nav_purchase.png"),
     "travel":     _get_resource_path("assets/nav_travel.png"),
     "memo":       _get_resource_path("assets/nav_memo.png"),
+    "contract":   _get_resource_path("assets/nav_contract.png"),
     "settings":   _get_resource_path("assets/nav_settings.png"),
 }
 
@@ -163,15 +165,11 @@ class App(ctk.CTk):
         self.minsize(1100, 700)
         self.configure(fg_color=COLORS["bg"])
 
-        # 设置程序图标（标题栏左侧）
-        logo_icon_path = _get_resource_path("assets/同仁堂火漆印3.jpg")
-        if os.path.exists(logo_icon_path) and PIL_AVAILABLE:
+        # ── 设置程序图标（标题栏 + 任务栏）──
+        # 参照 V1.5 的极简方式：仅用 iconbitmap()，不用 iconphoto/AppUserModelID/WM_SETICON
+        if os.path.exists(ICO_PATH):
             try:
-                icon_img = Image.open(logo_icon_path)
-                # 缩小到适合标题栏的尺寸
-                icon_img.thumbnail((40, 40))
-                self._icon_photo = ImageTk.PhotoImage(icon_img)
-                self.iconphoto(True, self._icon_photo)
+                self.iconbitmap(ICO_PATH)
             except Exception:
                 pass
 
@@ -192,7 +190,11 @@ class App(ctk.CTk):
         self._build_ui()
         self._switch_page("dashboard")
 
-        # ── 拦截关闭事件 ──
+        # ── 系统托盘：始终显示 ──
+        if PYSTRAY_AVAILABLE:
+            self._start_tray()
+
+        # ── 拦截关闭事件（隐藏窗口而非退出）──
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
         # ── 版本更新检查（后台线程，不阻塞 UI）──
@@ -374,6 +376,7 @@ class App(ctk.CTk):
             ("dashboard",  "仪表盘"),
             ("packaging",  "物料下单"),
             ("quotation",  "报价单"),
+            ("contract",   "合同生成"),
             ("query",      "物料查询"),
             ("supplier",   "供应商"),
             ("collection", "催款记录"),
@@ -459,6 +462,8 @@ class App(ctk.CTk):
             self.current_page = TravelPage(self.main_area, self.db, COLORS)
         elif key == "memo":
             self.current_page = MemoPage(self.main_area, self.db, COLORS)
+        elif key == "contract":
+            self.current_page = ContractPage(self.main_area, self.db, COLORS)
         elif key == "tangxun":
             self.current_page = TangxunPage(self.main_area, self.db, COLORS)
         elif key == "settings":
@@ -484,20 +489,13 @@ class App(ctk.CTk):
 
 
     def _on_closing(self):
-        """窗口关闭回调：最小化到托盘或退出"""
-        if self._tray_enabled and PYSTRAY_AVAILABLE:
-            self._minimize_to_tray()
-        else:
-            self._quit_app()
+        """关闭窗口：隐藏到托盘（不退出，托盘始终显示）"""
+        self.withdraw()  # 隐藏窗口，托盘图标保持
 
-    def _minimize_to_tray(self):
-        """最小化到系统托盘"""
+    def _start_tray(self):
+        """启动时创建系统托盘图标"""
         if self._tray_icon is not None:
-            return  # 已经在托盘中
-
-        self.withdraw()  # 隐藏窗口
-
-        # 在新线程中启动托盘图标
+            return
         self._tray_thread = threading.Thread(target=self._run_tray, daemon=True)
         self._tray_thread.start()
 
@@ -507,7 +505,6 @@ class App(ctk.CTk):
             # 加载托盘图标图片
             if os.path.exists(ICO_PATH):
                 img = PILImage.open(ICO_PATH)
-                # 缩小到适合托盘的尺寸（pystray 推荐 64x64）
                 img = img.resize((64, 64), PILImage.LANCZOS)
             else:
                 # 备用：创建纯色图标（莫兰迪陶土色）
