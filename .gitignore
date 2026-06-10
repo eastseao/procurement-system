@@ -1,0 +1,43 @@
+# PyInstaller
+build/
+dist/
+*.spec.bak
+*.pyc
+__pycache__/
+
+# Python
+*.py[cod]
+*.so
+*.egg-info/
+*.egg
+.eggs/
+*.manifest
+*.spec
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Database (local data)
+*.db
+*.sqlite
+*.sqlite3
+
+# Temp files
+temp_version_info.txt
+patch_*.py
+
+# Logs
+*.log
+
+# Cache
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
