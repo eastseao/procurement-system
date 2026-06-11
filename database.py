@@ -282,6 +282,20 @@ class Database:
         """)
         c.execute("INSERT OR IGNORE INTO quotation_supplier(id) VALUES(1)")
 
+        # ====== 报价单供方库（多供应商 V2） ======
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS quotation_suppliers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                supplier_name TEXT NOT NULL DEFAULT '',
+                contact_person TEXT DEFAULT '',
+                phone TEXT DEFAULT '',
+                address TEXT DEFAULT '',
+                quote_date TEXT DEFAULT '',
+                quote_validity TEXT DEFAULT '',
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+
         # ====== 三方比价记录表 (V1.9.8 新增) ======
         c.execute("""
             CREATE TABLE IF NOT EXISTS third_party_records (
@@ -1191,6 +1205,44 @@ class Database:
                 quote_validity=:quote_validity
             WHERE id=1
         """, data)
+        self.conn.commit()
+
+    # ====== 报价单供方配置（多供应商库 V2） ======
+    def get_all_quotation_suppliers(self):
+        """获取所有供方记录列表"""
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM quotation_suppliers ORDER BY id DESC")
+        return [dict(r) for r in c.fetchall()]
+
+    def save_quotation_supplier_record(self, data):
+        """新增一条供方记录，返回新记录ID"""
+        c = self.conn.cursor()
+        c.execute("""
+            INSERT INTO quotation_suppliers(supplier_name, contact_person,
+                phone, address, quote_date, quote_validity)
+            VALUES(:supplier_name, :contact_person, :phone,
+                :address, :quote_date, :quote_validity)
+        """, data)
+        self.conn.commit()
+        return c.lastrowid
+
+    def update_quotation_supplier_record(self, sid, data):
+        """按 ID 更新某条供方记录"""
+        c = self.conn.cursor()
+        data["id"] = sid
+        c.execute("""
+            UPDATE quotation_suppliers SET supplier_name=:supplier_name,
+                contact_person=:contact_person, phone=:phone,
+                address=:address, quote_date=:quote_date,
+                quote_validity=:quote_validity
+            WHERE id=:id
+        """, data)
+        self.conn.commit()
+
+    def delete_quotation_supplier_record(self, sid):
+        """按 ID 删除某条供方记录"""
+        c = self.conn.cursor()
+        c.execute("DELETE FROM quotation_suppliers WHERE id=?", (sid,))
         self.conn.commit()
 
     # ====== 三方比价记录 (V1.9.8 新增) ======

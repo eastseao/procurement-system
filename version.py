@@ -12,8 +12,8 @@ import threading
 import ssl
 from datetime import datetime
 
-__version__ = "2.0.2"
-__version_date__ = "2026-06-10"
+__version__ = "2.0.4"
+__version_date__ = "2026-06-11"
 
 # ═══════════════════════════════════════════════════════
 # GitHub 仓库信息（上传后请修改为你的实际仓库地址）
@@ -35,7 +35,8 @@ _check_lock = threading.Lock()
 def get_latest_release():
     """
     通过 GitHub API 获取最新 release 信息。
-    返回: (tag_name, html_url, body) 或 (None, None, None)
+    返回: (tag_name, html_url, body, asset_download_url)
+          asset_download_url 是第一个 .exe 资产的下载地址，若无则为 None
     """
     try:
         # 创建忽略 SSL 验证的上下文（兼容某些企业网络环境）
@@ -54,15 +55,22 @@ def get_latest_release():
             tag_name = data.get("tag_name", "").lstrip("v")
             html_url = data.get("html_url", "")
             body = data.get("body", "")
-            return tag_name, html_url, body
+            # 获取第一个 .exe 资产的下载地址
+            assets = data.get("assets", [])
+            asset_url = None
+            for a in assets:
+                if a.get("name", "").endswith(".exe"):
+                    asset_url = a.get("browser_download_url")
+                    break
+            return tag_name, html_url, body, asset_url
             
     except urllib.error.HTTPError as e:
         if e.code == 404:
             # 仓库还没有 release，不算错误
             pass
-        return None, None, None
+        return None, None, None, None
     except Exception:
-        return None, None, None
+        return None, None, None, None
 
 
 def _parse_version(version_str):
@@ -95,13 +103,14 @@ def check_for_updates(force=False):
         if _last_check_result is not None and not force:
             return _last_check_result
         
-        latest, url, notes = get_latest_release()
+        latest, url, notes, asset_url = get_latest_release()
         
         result = {
             "has_update": False,
             "current_version": __version__,
             "latest_version": latest or __version__,
             "download_url": url or GITHUB_RELEASES_URL,
+            "asset_download_url": asset_url or "",
             "release_notes": notes or "",
         }
         

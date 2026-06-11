@@ -388,10 +388,30 @@ class App(ctk.CTk):
             if url:
                 webbrowser.open(url)
             dialog.destroy()
-        
+
+        def do_auto_update():
+            asset_url = result.get("asset_download_url", "")
+            if not asset_url:
+                messagebox.showinfo("提示", "未找到自动更新包，请前往 Releases 手动下载。", parent=dialog)
+                return
+            dialog.destroy()
+            self._auto_update(asset_url, latest)
+
         def remind_later():
             dialog.destroy()
-        
+
+        # 自动更新按钮
+        auto_btn = tk.Button(
+            btn_frame, text="自动更新",
+            font=("Microsoft YaHei", 12, "bold"),
+            bg="#5B9279", fg="white",
+            activebackground="#4A7A63", activeforeground="white",
+            relief="flat", padx=32, pady=10,
+            cursor="hand2",
+            command=do_auto_update,
+        )
+        auto_btn.pack(side="right", padx=(10, 0))
+
         # 前往下载按钮
         download_btn = tk.Button(
             btn_frame, text="前往下载",
@@ -415,6 +435,133 @@ class App(ctk.CTk):
             command=remind_later,
         )
         later_btn.pack(side="right")
+
+    def _auto_update(self, asset_url, latest_version):
+        """
+        自动更新：下载新版本 EXE，创建更新脚本，重启应用。
+        在后台线程下载，主线程显示进度。
+        """
+        import tempfile
+        import urllib.request
+        import urllib.error
+
+        # 进度弹窗
+        prog_dialog = tk.Toplevel(self)
+        prog_dialog.title("正在更新")
+        prog_dialog.geometry("400x180")
+        prog_dialog.resizable(False, False)
+        prog_dialog.configure(bg="#FFFAF5")
+        prog_dialog.transient(self)
+        prog_dialog.grab_set()
+        prog_dialog.update_idletasks()
+        sw = prog_dialog.winfo_screenwidth()
+        sh = prog_dialog.winfo_screenheight()
+        prog_dialog.geometry(f"400x180+{(sw-400)//2}+{(sh-180)//2}")
+
+        tk.Label(
+            prog_dialog, text=f"正在下载 采购助手 V{latest_version}...",
+            font=("Microsoft YaHei", 13, "bold"),
+            fg="#4A3728", bg="#FFFAF5",
+        ).pack(pady=(24, 8))
+
+        status_var = tk.StringVar(value="准备下载...")
+        status_label = tk.Label(
+            prog_dialog, textvariable=status_var,
+            font=("Microsoft YaHei", 11),
+            fg="#8B7355", bg="#FFFAF5",
+        )
+        status_label.pack(pady=(0, 12))
+
+        # 进度条（ttk）
+        import tkinter.ttk as ttk
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Update.Horizontal.TProgressbar",
+                       background="#C1816D", troughcolor="#F0EBE3",
+                       borderwidth=0, thickness=18)
+        progress_bar = ttk.Progressbar(
+            prog_dialog, mode="indeterminate",
+            style="Update.Horizontal.TProgressbar",
+        )
+        progress_bar.pack(fill="x", padx=40)
+        progress_bar.start(10)
+
+        temp_dir = tempfile.gettempdir()
+        exe_path = sys.executable  # 当前 EXE 完整路径
+        exe_dir = os.path.dirname(exe_path)
+        exe_name = os.path.basename(exe_path)
+        new_exe_path = os.path.join(temp_dir, "procurement_update.exe")
+
+        def _download_worker():
+            try:
+                status_var.set("正在连接下载服务器...")
+                req = urllib.request.Request(
+                    asset_url,
+                    headers={"User-Agent": f"ProcurementSystem/{__version__}"},
+                )
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    total = int(resp.headers.get("Content-Length", 0))
+                    downloaded = 0
+                    block_size = 8192
+
+                    progress_bar.stop()
+                    progress_bar.configure(mode="determinate", maximum=100)
+                    self.after(0, lambda: progress_bar.configure(maximum=100))
+
+                    with open(new_exe_path, "wb") as f:
+                        while True:
+                            block = resp.read(block_size)
+                            if not block:
+                                break
+                            f.write(block)
+                            downloaded += len(block)
+                            if total > 0:
+                                pct = int(downloaded * 100 / total)
+                                self.after(0, lambda v=pct: progress_bar.configure(value=v))
+                                self.after(0, lambda v=pct: status_var.set(f"已下载 {v}%"))
+
+                # 下载完成，创建更新脚本
+                self.after(0, lambda: status_var.set("下载完成，正在准备更新..."))
+                self.after(0, lambda: progress_bar.configure(value=100))
+
+                # 写入更新批处理脚本
+                bat_path = os.path.join(temp_dir, "procurement_update.bat")
+                bat_content = f"""@echo off
+timeout /t 2 /nobreak > nul
+taskkill /f /im "{exe_name}" > nul 2>&1
+timeout /t 1 /nobreak > nul
+copy /Y "{new_exe_path}" "{exe_path}" > nul
+start "" "{exe_path}"
+del "{new_exe_path}" > nul 2>&1
+"""
+                with open(bat_path, "w", encoding="gbk") as f:
+                    f.write(bat_content)
+
+                self.after(0, lambda: prog_dialog.destroy())
+                self.after(100, lambda: self._run_updater(bat_path))
+
+            except Exception as e:
+                self.after(0, lambda: prog_dialog.destroy())
+                self.after(100, lambda: messagebox.showerror(
+                    "更新失败", f"下载更新失败：\n{e}\n\n请尝试手动前往 Releases 下载。", parent=self
+                ))
+
+        threading.Thread(target=_download_worker, daemon=True).start()
+
+    def _run_updater(self, bat_path):
+        """启动更新脚本并退出当前应用"""
+        try:
+            import subprocess
+            # 用 cmd /c start 启动批处理脚本（不阻塞）
+            subprocess.Popen(
+                f'cmd /c start "" "{bat_path}"',
+                shell=True,
+                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
+            )
+        except Exception:
+            pass
+        # 退出当前应用
+        self._quit_app()
 
     def _build_ui(self):
         # ── 侧边栏（分组折叠式）──────────────────────────

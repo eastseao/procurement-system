@@ -568,7 +568,7 @@ class ThirdPartyPage(ctk.CTkFrame):
             return
         col_idx = int(col.replace("#", "")) - 1
         oid = int(item)
-        if col_idx == 11:  # 操作列 (0-index, 第12列)
+        if col_idx == 10:  # 操作列（第11列，0-indexed=10）
             bbox = self.tree.bbox(item, col)
             if not bbox:
                 return
@@ -651,31 +651,73 @@ class ThirdPartyPage(ctk.CTkFrame):
             center = Alignment(horizontal="center", vertical="center", wrap_text=True)
             left_wrap = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-            # ── 1. 写入表头信息 ──
+            # ── 辅助函数：安全设置单元格值（绕过 MergedCell 只读限制）──
+            # openpyxl 的 ws.cell() 可能返回缓存的 MergedCell 对象（即使已 unmerge）。
+            # 解决方案：使用坐标字符串赋值法 ws['A1'] = value，
+            # 该方法会自动创建/覆盖普通 Cell，不受 MergedCell 缓存影响。
+            def _set_cell(ws, row, col, value=None, **props):
+                from openpyxl.utils import get_column_letter
+                coord = f"{get_column_letter(col)}{row}"
+                # 方法1：坐标字符串赋值（核心——绕过 MergedCell 缓存）
+                try:
+                    ws[coord] = value
+                except Exception:
+                    # 极端 fallback：强制从 _cells 字典取真实 Cell
+                    cell = ws._cells.get((row, col))
+                    if cell is not None and not isinstance(cell, type(None).__class__):
+                        try:
+                            cell.value = value
+                        except Exception:
+                            pass
+                    return
+                # 设置样式属性
+                if props:
+                    cell = ws.cell(row=row, column=col)
+                    for k, v in props.items():
+                        try:
+                            setattr(cell, k, v)
+                        except (AttributeError, TypeError, ValueError):
+                            pass
+
+            # ════════════════════════════════════════════
+            # 核心策略：零行操作（不用 insert_rows/delete_rows）
+            #
+            # 原因：openpyxl 的 insert_rows/delete_rows 会推移合并单元格，
+            #       导致数据区出现 MergedCell（只读），且 ws.cell() 返回缓存对象。
+            #       即使 unmerge 后重新获取，缓存仍返回旧 MergedCell。
+            #
+            # 解决：
+            #   1. 只解除数据区合并 A6:A9~E6:E9（5个）
+            #   2. 数据行 ≤ 4 时：直接覆写行 6~N，多余行清空（不删除）
+            #   3. 数据行 > 4 时：在 row 10 之后 insert（不影响上方任何合并）
+            #   4. 所有赋值用 ws['A1'] 坐标法（绕过 MergedCell 缓存）
+            # ════════════════════════════════════════════
+
+            # ── 1. 只解除数据区域的合并（A6:A9 ~ E6:E9）──
+            DATA_MERGE_RANGES = ["A6:A9", "B6:B9", "C6:C9", "D6:D9", "E6:E9"]
+            for mr in DATA_MERGE_RANGES:
+                try:
+                    ws.unmerge_cells(mr)
+                except Exception:
+                    pass
+
+            # ── 2. 写入表头信息（固定区域，无合并冲突）──
             s1 = export_records[0].get("supplier1", "") or "厂家1"
             s2 = export_records[0].get("supplier2", "") or "厂家2"
             s3 = export_records[0].get("supplier3", "") or "厂家3"
 
-            # 供应商名称写入 Row 5, cols 7/8/9（表头字号）
             for col, val in [(7, s1), (8, s2), (9, s3)]:
-                cell = ws.cell(row=5, column=col)
-                cell.value = val
-                cell.font = header_font
-                cell.alignment = center
+                _set_cell(ws, 5, col, val, font=header_font, alignment=center)
 
-            # 申请时间写入 H2 (模板 : H2:I2 合并单元格)
             apply_date = self.date_entry.get().strip()
             if apply_date:
-                cell = ws.cell(row=2, column=8)
-                cell.value = apply_date
-                cell.font = date_font
-                cell.alignment = center
+                _set_cell(ws, 2, 8, apply_date, font=date_font, alignment=center)
 
-            # ── 2. 准备数据：展开每个记录的每个阶梯 ──
+            # ── 3. 准备数据：展开每个记录的每个阶梯 ──
             DATA_START = 6
             TEMPLATE_DATA_ROWS = 4  # 模板默认4条数据行 (rows 6-9)
 
-            expanded = []  # [(record, qty, price1, price2, price3), ...]
+            expanded = []
             for r in export_records:
                 qt = r.get("quantity_tier", "")
                 p1 = r.get("price1_tier", "")
@@ -687,45 +729,33 @@ class ThirdPartyPage(ctk.CTkFrame):
                 p3_parts = [x.strip() for x in p3.split(",") if x.strip()] if p3 else []
                 max_len = max(len(q_parts), len(p1_parts), len(p2_parts), len(p3_parts), 1)
                 for i in range(max_len):
-                    qty = q_parts[i] if i < len(q_parts) else ""
-                    price1 = p1_parts[i] if i < len(p1_parts) else ""
-                    price2 = p2_parts[i] if i < len(p2_parts) else ""
-                    price3 = p3_parts[i] if i < len(p3_parts) else ""
-                    expanded.append((r, qty, price1, price2, price3))
+                    expanded.append((
+                        r,
+                        q_parts[i] if i < len(q_parts) else "",
+                        p1_parts[i] if i < len(p1_parts) else "",
+                        p2_parts[i] if i < len(p2_parts) else "",
+                        p3_parts[i] if i < len(p3_parts) else "",
+                    ))
 
             total_data_rows = len(expanded)
 
-            # ── 3. 解除数据区域所有合并单元格 ──
-            merges_to_remove = []
-            for mc_range in list(ws.merged_cells.ranges):
-                min_col, min_row, max_col, max_row = range_boundaries(str(mc_range))
-                # 解除数据区域 (rows 6-9) 及产品信息区域的合并
-                if min_row >= DATA_START and max_row <= DATA_START + TEMPLATE_DATA_ROWS - 1:
-                    merges_to_remove.append(str(mc_range))
-                # 也检查跨越数据区域的合并
-                elif min_row <= DATA_START + TEMPLATE_DATA_ROWS - 1 and max_row >= DATA_START:
-                    merges_to_remove.append(str(mc_range))
-
-            for mr in set(merges_to_remove):
-                try:
-                    ws.unmerge_cells(mr)
-                except Exception:
-                    pass
-
-            # ── 4. 插入/删除行以匹配数据量 ──
+            # ── 4. 行数调整（零风险策略）──
             if total_data_rows > TEMPLATE_DATA_ROWS:
+                # 需要更多行：在模板数据区域末尾之后插入（row=10）
+                # row 10 在所有数据区合并之下，insert 不会影响已有合并
                 ws.insert_rows(DATA_START + TEMPLATE_DATA_ROWS, total_data_rows - TEMPLATE_DATA_ROWS)
-            elif total_data_rows < TEMPLATE_DATA_ROWS:
-                ws.delete_rows(DATA_START + total_data_rows, TEMPLATE_DATA_ROWS - total_data_rows)
+            # 注意：total_data_rows < TEMPLATE_DATA_ROWS 时不调用 delete_rows！
+            # 多余的模板数据行将在步骤 5 中被直接覆写为空。
 
-            # ── 5. 清除数据区域内容 ──
-            for r in range(DATA_START, DATA_START + total_data_rows):
+            # ── 5. 清除并写入数据区域 ──
+            # 清除范围：row 6 到 max(实际数据行, 模板行数)
+            CLEAR_END = DATA_START + max(total_data_rows, TEMPLATE_DATA_ROWS)
+            for r in range(DATA_START, CLEAR_END):
                 for c in range(1, 10):
-                    ws.cell(row=r, column=c).value = None
+                    _set_cell(ws, r, c, "")
 
-            # ── 6. 写入数据行 ──
             # 跟踪每个记录的行范围，用于合并产品信息
-            record_row_ranges = {}  # oid -> (first_row, last_row)
+            record_row_ranges = {}
 
             exp_idx = 0
             for r in export_records:
@@ -738,109 +768,45 @@ class ThirdPartyPage(ctk.CTkFrame):
                 record_row_ranges[oid] = (first_row, last_row)
                 exp_idx += tier_count
 
+            # 写入数据
             for idx, (r, qty, price1, price2, price3) in enumerate(expanded):
                 row = DATA_START + idx
-
-                # 设置行高
                 ws.row_dimensions[row].height = 36
 
-                # 序号 (col 1)
-                cell = ws.cell(row=row, column=1)
-                cell.value = idx + 1
-                cell.font = data_font
-                cell.alignment = center
-                cell.border = border_all
+                _set_cell(ws, row, 1, idx + 1,          font=data_font, alignment=center,   border=border_all)
+                _set_cell(ws, row, 2, r.get("product_name", ""), font=data_font, alignment=left_wrap, border=border_all)
+                _set_cell(ws, row, 3, r.get("item_no", ""),     font=data_font, alignment=center,   border=border_all)
+                _set_cell(ws, row, 4, r.get("material_structure", ""), font=data_font, alignment=left_wrap, border=border_all)
+                _set_cell(ws, row, 5, r.get("spec_size", ""),    font=data_font, alignment=left_wrap, border=border_all)
+                _set_cell(ws, row, 6, qty,                      font=data_font, alignment=center,   border=border_all)
+                _set_cell(ws, row, 7, price1,                   font=data_font, alignment=center,   border=border_all)
+                _set_cell(ws, row, 8, price2,                   font=data_font, alignment=center,   border=border_all)
+                _set_cell(ws, row, 9, price3,                   font=data_font, alignment=center,   border=border_all)
 
-                # 品名 (col 2)
-                cell = ws.cell(row=row, column=2)
-                cell.value = r.get("product_name", "")
-                cell.font = data_font
-                cell.alignment = left_wrap
-                cell.border = border_all
-
-                # 项目号 (col 3)
-                cell = ws.cell(row=row, column=3)
-                cell.value = r.get("item_no", "")
-                cell.font = data_font
-                cell.alignment = center
-                cell.border = border_all
-
-                # 材质 (col 4)
-                cell = ws.cell(row=row, column=4)
-                cell.value = r.get("material_structure", "")
-                cell.font = data_font
-                cell.alignment = left_wrap
-                cell.border = border_all
-
-                # 规格 (col 5)
-                cell = ws.cell(row=row, column=5)
-                cell.value = r.get("spec_size", "")
-                cell.font = data_font
-                cell.alignment = left_wrap
-                cell.border = border_all
-
-                # 数量 (col 6)
-                cell = ws.cell(row=row, column=6)
-                cell.value = qty
-                cell.font = data_font
-                cell.alignment = center
-                cell.border = border_all
-
-                # 厂家1价格 (col 7)
-                cell = ws.cell(row=row, column=7)
-                cell.value = price1
-                cell.font = data_font
-                cell.alignment = center
-                cell.border = border_all
-
-                # 厂家2价格 (col 8)
-                cell = ws.cell(row=row, column=8)
-                cell.value = price2
-                cell.font = data_font
-                cell.alignment = center
-                cell.border = border_all
-
-                # 厂家3价格 (col 9)
-                cell = ws.cell(row=row, column=9)
-                cell.value = price3
-                cell.font = data_font
-                cell.alignment = center
-                cell.border = border_all
-
-            # ── 7. 合并产品信息单元格（多阶梯记录）──
+            # ── 6. 重建产品信息合并单元格（仅多阶梯记录）──
             for oid, (first_row, last_row) in record_row_ranges.items():
                 if first_row != last_row:
-                    # 合并序号 (col 1)
-                    ws.merge_cells(f"A{first_row}:A{last_row}")
-                    # 合并品名 (col 2)
-                    ws.merge_cells(f"B{first_row}:B{last_row}")
-                    # 合并项目号 (col 3)
-                    ws.merge_cells(f"C{first_row}:C{last_row}")
-                    # 合并材质 (col 4)
-                    ws.merge_cells(f"D{first_row}:D{last_row}")
-                    # 合并规格 (col 5)
-                    ws.merge_cells(f"E{first_row}:E{last_row}")
-
-                    # 合并后，重新设置对齐方式
+                    for col_range in ["A", "B", "C", "D", "E"]:
+                        ws.merge_cells(f"{col_range}{first_row}:{col_range}{last_row}")
+                    # 只修正对齐方式，不覆盖值（merge已保留左上角单元格的值）
                     for c in [1, 2, 3, 4, 5]:
                         cell = ws.cell(row=first_row, column=c)
-                        if c in [2, 4, 5]:
-                            cell.alignment = left_wrap
-                        else:
-                            cell.alignment = center
+                        try:
+                            cell.alignment = left_wrap if c in [2, 4, 5] else center
+                        except Exception:
+                            pass
 
-            # ── 8. 最终做货供应商（注入到 G12，与 D12 标签平行）──
+            # ── 7. 最终做货供应商（固定写入模板签名区第12行）──
+            # 模板中 D12:F12="最终做货供应商"标签, G12:I12=值域（合并单元格）
+            # 注意：无论数据多少行，此区域固定在 row 12
+            FS_ROW = 12  # 固定行号，与模板一致
             fs = export_records[0].get("final_supplier", "").strip()
             if not fs:
-                fs = self.final_supplier_entry.get().strip()  # fallback
+                fs = self.final_supplier_entry.get().strip()
             if fs:
-                # G12:I12 是模板的合并单元格，供应商名写入此处
-                cell = ws.cell(row=12, column=7)  # col G
-                cell.value = fs
-                cell.font = data_font
-                cell.alignment = center
-                cell.border = border_all
+                _set_cell(ws, FS_ROW, 7, fs, font=data_font, alignment=center)
 
+            # ── 9. 保存 ──
             try:
                 wb.save(filepath)
             except PermissionError:
