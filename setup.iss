@@ -3,9 +3,9 @@
 
 #define MyAppName "采购助手"
 #define MyAppExeName "采购助手.exe"
-#define MyAppVersion "2.2.0"
+#define MyAppVersion "2.2.3"
 #define MyAppPublisher "同仁堂健康药业"
-#define SourcePath "I:\采购管理系统\采购管理系统V2.2.0\dist"
+#define SourcePath "I:\采购管理系统\采购管理系统V2.2.1\dist"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -18,12 +18,12 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 ; 不带版本号的安装包名称
 OutputBaseFilename={#MyAppName}_Setup
-SetupIconFile=I:\采购管理系统\采购管理系统V2.2.0\assets\同仁堂logo\同仁堂企业LOGO_×256.ico
+SetupIconFile=I:\采购管理系统\采购管理系统V2.2.1\assets\同仁堂logo\同仁堂企业LOGO_×256.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
-OutputDir=I:\采购管理系统\采购管理系统V2.2.0\dist
+OutputDir=I:\采购管理系统\采购管理系统V2.2.1\dist
 
 [Languages]
 Name: "default"; MessagesFile: "compiler:Default.isl"
@@ -33,7 +33,6 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 Source: "{#SourcePath}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourcePath}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; 注意：安装包只包含 EXE 本身，assets 等资源已打包进 EXE 内部
 
 [Icons]

@@ -161,10 +161,10 @@ class SupplierDialog(ctk.CTkToplevel):
         bf=ctk.CTkFrame(self,fg_color="transparent")
         bf.pack(fill="x",padx=20,pady=(0,16))
         ctk.CTkButton(bf,text="保存",width=100,height=32,
-            font=ctk.CTkFont(size=14),command=self._save).pack(side="right",padx=4)
+            font=ctk.CTkFont(size=14),command=self._save, corner_radius=20).pack(side="right",padx=4)
         ctk.CTkButton(bf,text="取消",width=100,height=32,
             fg_color="#6B7280",hover_color="#4B5563",
-            font=ctk.CTkFont(size=14),command=self.destroy).pack(side="right",padx=4)
+            font=ctk.CTkFont(size=14),command=self.destroy, corner_radius=20).pack(side="right",padx=4)
     def _save(self):
         data={k:v.get().strip() for k,v in self.entries.items()}
         if not data.get("short_name"): messagebox.showwarning("提示","简称不能为空");return
@@ -206,10 +206,10 @@ class PartyAConfigDialog(ctk.CTkToplevel):
         ctk.CTkButton(bf,text="保存",width=100,height=34,
             fg_color="#2563BE",hover_color="#1D4ED8",
             font=ctk.CTkFont(size=14,weight="bold"),
-            command=self._save).pack(side="right",padx=4)
+            command=self._save, corner_radius=20).pack(side="right",padx=4)
         ctk.CTkButton(bf,text="取消",width=100,height=34,
             fg_color="#6B7280",hover_color="#4B5563",
-            font=ctk.CTkFont(size=14),command=self.destroy).pack(side="right",padx=4)
+            font=ctk.CTkFont(size=14),command=self.destroy, corner_radius=20).pack(side="right",padx=4)
     def _save(self):
         data={k:v.get().strip() for k,v in self.entries.items()}
         if not data.get("company_name"): messagebox.showwarning("提示","公司全称不能为空");return
@@ -247,15 +247,15 @@ class ContractPage(ctk.CTkFrame):
         ctk.CTkButton(bf,text="生成合同",width=130,height=34,
             fg_color=self.C["primary"],hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(size=14,weight="bold"),
-            command=self._generate_contract).pack(side="right",padx=4)
+            command=self._generate_contract, corner_radius=20).pack(side="right",padx=4)
         ctk.CTkButton(bf,text="甲方配置",width=120,height=34,
             fg_color="#2563BE",hover_color="#1D4ED8",
             font=ctk.CTkFont(size=13,weight="bold"),
-            command=self._open_party_a_config).pack(side="right",padx=4)
+            command=self._open_party_a_config, corner_radius=20).pack(side="right",padx=4)
         ctk.CTkButton(bf,text="+管理供应商",width=130,height=34,
             fg_color="#B5605A",hover_color="#9B4F4A",
             font=ctk.CTkFont(size=13,weight="bold"),
-            command=self._manage_suppliers).pack(side="right",padx=(4,8))
+            command=self._manage_suppliers, corner_radius=20).pack(side="right",padx=(4,8))
 
         # 供应商检索栏
         sb=ctk.CTkFrame(self,fg_color=self.C["card"],corner_radius=self.C["radius_card"])
@@ -278,24 +278,24 @@ class ContractPage(ctk.CTkFrame):
         ctk.CTkButton(sb,text="检索",width=60,height=30,
             fg_color=self.C["primary"],hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(size=13),
-            command=lambda:self._on_search(None)).pack(side="left",padx=(0,10),pady=12)
+            command=lambda:self._on_search(None), corner_radius=20).pack(side="left",padx=(0,10),pady=12)
         # 确认按钮
         self.confirm_btn = ctk.CTkButton(sb,text="确认",width=100,height=30,
             fg_color=self.C["success"],hover_color="#7A9A6E",
             font=ctk.CTkFont(size=13,weight="bold"),
-            command=self._on_confirm_supplier)
+            command=self._on_confirm_supplier, corner_radius=20)
         self.confirm_btn.pack(side="left",padx=(0,10),pady=12)
         ctk.CTkButton(sb,text="重置",width=100,height=30,
             fg_color="#6B7280",hover_color="#4B5563",
             font=ctk.CTkFont(size=13,weight="bold"),
-            command=self._on_reset_all).pack(side="left",padx=(0,10),pady=12)
+            command=self._on_reset_all, corner_radius=20).pack(side="left",padx=(0,10),pady=12)
         # 确认状态标签
         self.confirm_status_label = ctk.CTkLabel(sb,text="",
             font=ctk.CTkFont(size=12),text_color="#9CA3AF")
         self.confirm_status_label.pack(side="left",padx=(0,10),pady=12)
 
-        # 滚动区域
-        scroll=ctk.CTkScrollableFrame(self,fg_color="transparent",corner_radius=0)
+        # 内容区域（无滚动条）
+        scroll=ctk.CTkFrame(self,fg_color="transparent")
         scroll.pack(fill="both",expand=True,padx=24,pady=(0,16))
         self._build_contract_info(scroll)
         self._build_products(scroll)
@@ -421,7 +421,7 @@ class ContractPage(ctk.CTkFrame):
         ).pack(side="left",pady=10)
         ctk.CTkButton(top,text="+ 新增",width=80,height=30,
             font=ctk.CTkFont(size=13),
-            command=lambda:self._add_supplier_dialog(dialog),
+            command=lambda:self._add_supplier_dialog(dialog), corner_radius=20,
         ).pack(side="right",padx=4,pady=8)
         self._supplier_list_frame=WheelScrollFrame(dialog,fg_color="transparent")
         self._supplier_list_frame.pack(fill="both",expand=True,padx=16,pady=(0,12))
@@ -441,12 +441,12 @@ class ContractPage(ctk.CTkFrame):
                 ctk.CTkButton(r,text="编辑",width=50,height=26,
                     fg_color=self.C["primary"],hover_color=self.C["primary_hover"],
                     font=ctk.CTkFont(size=12),
-                    command=lambda sup=s: [dialog.destroy(),self._edit_supplier_dialog(sup)],
+                    command=lambda sup=s: [dialog.destroy(),self._edit_supplier_dialog(sup)], corner_radius=20,
                 ).pack(side="right",padx=4,pady=4)
                 ctk.CTkButton(r,text="删除",width=50,height=26,
                     fg_color="#B56A6A",hover_color="#A85A5A",
                     font=ctk.CTkFont(size=12),
-                    command=lambda sup=s: self._delete_supplier(sup,dialog,lf),
+                    command=lambda sup=s: self._delete_supplier(sup,dialog,lf), corner_radius=20,
                 ).pack(side="right",padx=2,pady=4)
     def _add_supplier_dialog(self,pd=None):
         if pd: pd.destroy()
@@ -611,7 +611,7 @@ class ContractPage(ctk.CTkFrame):
         ctk.CTkButton(hf,text="+ 添加产品",width=100,height=30,
             fg_color=self.C["success"],hover_color="#7A9A6E",
             font=ctk.CTkFont(size=13),
-            command=self._add_product_row).pack(side="right")
+            command=self._add_product_row, corner_radius=20).pack(side="right")
         self.product_container=ctk.CTkFrame(card,fg_color="transparent")
         self.product_container.pack(fill="x",padx=20,pady=(0,14))
         hdr=ctk.CTkFrame(self.product_container,fg_color="transparent")
@@ -656,7 +656,7 @@ class ContractPage(ctk.CTkFrame):
         del_btn=ctk.CTkButton(rf,text="X",width=30,height=30,
             fg_color="#B56A6A",hover_color="#A85A5A",
             font=ctk.CTkFont(size=12),
-            command=lambda f=rf: self._del_product_row(f))
+            command=lambda f=rf: self._del_product_row(f), corner_radius=20)
         del_btn.pack(side="left",padx=2)
         rf.entries=entries; self.product_rows.append(rf)
 

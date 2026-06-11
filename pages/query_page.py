@@ -41,21 +41,21 @@ class QueryPage(ctk.CTkFrame):
             fg_color="#FEE2E2", text_color=self.C["danger"],
             hover_color="#FECACA",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-            command=self._clear_data
+            command=self._clear_data, corner_radius=20
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📂  导入CSV", width=110, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
-            command=self._import_csv
+            command=self._import_csv, corner_radius=20
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📤 导出Excel", width=110, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
-            command=self._export_xlsx
+            command=self._export_xlsx, corner_radius=20
         ).pack(side="right", padx=4)
 
         self.import_status = ctk.CTkLabel(
@@ -115,7 +115,7 @@ class QueryPage(ctk.CTkFrame):
             row1, text="查询", width=66, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
-            command=self._apply_filter
+            command=self._apply_filter, corner_radius=20
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(row1, text="重置", width=66, height=34,
@@ -123,7 +123,7 @@ class QueryPage(ctk.CTkFrame):
                       hover_color="#E2E8F0",
                       border_width=1, border_color=self.C["border"],
                       font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-                      command=self._reset_filter).pack(side="left")
+                      command=self._reset_filter, corner_radius=20).pack(side="left")
 
         # 统计栏
         stats_frame = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=self.C["radius_card"], height=52)
@@ -205,8 +205,8 @@ class QueryPage(ctk.CTkFrame):
                               command=lambda c=cid: self._sort_by_col(c))
             self.tree.column(cid, width=width, minwidth=50, stretch=True, anchor=anchor)
 
-        vsb = ttk.Scrollbar(tree_wrap, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(tree_wrap, orient="horizontal", command=self.tree.xview)
+        vsb = ctk.CTkScrollbar(tree_wrap, orientation="vertical", command=self.tree.yview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8)
+        hsb = ctk.CTkScrollbar(tree_wrap, orientation="horizontal", command=self.tree.xview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8, height=8)
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
         vsb.pack(side="right", fill="y")
         hsb.pack(side="bottom", fill="x")

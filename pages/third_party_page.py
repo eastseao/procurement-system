@@ -64,14 +64,14 @@ class ThirdPartyPage(ctk.CTkFrame):
             toolbar, text="导出Excel 📤", width=120, height=34,
             fg_color=C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._export_excel,
+            command=self._export_excel, corner_radius=20,
         ).pack(side="right", pady=6)
 
         # ── 外层滚动容器 ───────────────────────────
         self.outer_scroll = ctk.CTkScrollableFrame(
             self, fg_color="transparent", corner_radius=0,
             scrollbar_button_color=C["border"],
-            scrollbar_button_hover_color=C.get("sidebar_hover", "#E8DDD0"),
+            scrollbar_button_hover_color=C.get("sidebar_hover", "#ddd"),
         )
         self.outer_scroll.pack(fill="both", expand=True, padx=0, pady=0)
 
@@ -116,29 +116,29 @@ class ThirdPartyPage(ctk.CTkFrame):
         # 品名（宽度减半，固定宽度）
         ctk.CTkLabel(r1, text="品名*", width=45, anchor="w",
                      font=ctk.CTkFont(size=14)).pack(side="left")
-        self.name_entry = ctk.CTkEntry(r1, width=140, height=32,
+        self.name_entry = ctk.CTkEntry(r1, height=32,
                                        font=ctk.CTkFont(size=14),
                                        placeholder_text="输入产品名称")
-        self.name_entry.pack(side="left", padx=(4, 12))
+        self.name_entry.pack(side="left", fill="x", expand=True, padx=(4, 12))
 
         # 项目号
         ctk.CTkLabel(r1, text="项目号", width=45, anchor="w",
                      font=ctk.CTkFont(size=14)).pack(side="left")
-        self.item_no_entry = ctk.CTkEntry(r1, width=120, height=32, font=ctk.CTkFont(size=14))
-        self.item_no_entry.pack(side="left", padx=(4, 12))
+        self.item_no_entry = ctk.CTkEntry(r1, height=32, font=ctk.CTkFont(size=14))
+        self.item_no_entry.pack(side="left", fill="x", expand=True, padx=(4, 12))
 
         # 材质结构
         ctk.CTkLabel(r1, text="材质结构", width=55, anchor="w",
                      font=ctk.CTkFont(size=14)).pack(side="left")
-        self.material_entry = ctk.CTkEntry(r1, width=120, height=32, font=ctk.CTkFont(size=14),
+        self.material_entry = ctk.CTkEntry(r1, height=32, font=ctk.CTkFont(size=14),
                                            placeholder_text="输入材质结构")
-        self.material_entry.pack(side="left", padx=(4, 12))
+        self.material_entry.pack(side="left", fill="x", expand=True, padx=(4, 12))
 
         # 规格尺寸
         ctk.CTkLabel(r1, text="规格尺寸", width=55, anchor="w",
                      font=ctk.CTkFont(size=14)).pack(side="left")
-        self.spec_entry = ctk.CTkEntry(r1, width=120, height=32, font=ctk.CTkFont(size=14))
-        self.spec_entry.pack(side="left", padx=(4, 0))
+        self.spec_entry = ctk.CTkEntry(r1, height=32, font=ctk.CTkFont(size=14))
+        self.spec_entry.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         # ── 供应商名称 ─────────────────────────────
         sup_frame = ctk.CTkFrame(form_card, fg_color="transparent")
@@ -201,7 +201,7 @@ class ThirdPartyPage(ctk.CTkFrame):
             action_frame, text="＋ 添加数量", width=110, height=30,
             font=ctk.CTkFont(size=13),
             fg_color="#6B7280", hover_color="#4B5563",
-            command=self._add_qp_row,
+            command=self._add_qp_row, corner_radius=20,
         ).pack(side="left")
 
         self.edit_hint_label = ctk.CTkLabel(
@@ -215,14 +215,14 @@ class ThirdPartyPage(ctk.CTkFrame):
             action_frame, text="✕ 清空表单", width=100, height=36,
             fg_color="#9CA3AF", hover_color="#6B7280",
             font=ctk.CTkFont(size=14),
-            command=self._clear_form,
+            command=self._clear_form, corner_radius=20,
         ).pack(side="right", padx=(8, 0))
 
         self.save_btn = ctk.CTkButton(
             action_frame, text="💾 保存记录", width=100, height=36,
             fg_color=C["primary"], hover_color=C["primary_hover"],
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._confirm_record,
+            command=self._confirm_record, corner_radius=20,
         )
         self.save_btn.pack(side="right")
 
@@ -296,8 +296,8 @@ class ThirdPartyPage(ctk.CTkFrame):
         self.tree.column("材质结构", anchor="w")
         self.tree.column("规格尺寸", anchor="w")
 
-        vsb = ttk.Scrollbar(tree_wrap, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(tree_wrap, orient="horizontal", command=self.tree.xview)
+        vsb = ctk.CTkScrollbar(tree_wrap, orientation="vertical", command=self.tree.yview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8)
+        hsb = ctk.CTkScrollbar(tree_wrap, orientation="horizontal", command=self.tree.xview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8, height=8)
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
         self.tree.pack(side="left", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
@@ -429,7 +429,7 @@ class ThirdPartyPage(ctk.CTkFrame):
             row_frame, text="✕", width=30, height=30,
             fg_color="#B56A6A", hover_color="#A85A5A",
             font=ctk.CTkFont(size=12, weight="bold"),
-            command=lambda rf=row_frame: self._remove_qp_row(rf),
+            command=lambda rf=row_frame: self._remove_qp_row(rf), corner_radius=20,
         )
         del_btn.pack(side="left", padx=(6, 0))
         self.qp_rows.append((qty_entry, p1_entry, p2_entry, p3_entry, row_frame))

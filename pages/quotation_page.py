@@ -56,31 +56,38 @@ class QuotationPage(ctk.CTkFrame):
         btn_frame.pack(side="right", pady=8)
 
         ctk.CTkButton(
+            btn_frame, text="👁 预览报价单", width=120, height=34,
+            fg_color="#8B7355", hover_color="#6B5B45",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._preview_quotation, corner_radius=20,
+        ).pack(side="right", padx=4)
+
+        ctk.CTkButton(
             btn_frame, text="📤 导出报价单", width=120, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._export_quotation,
+            command=self._export_quotation, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="+供方信息", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=14),
-            command=self._open_supplier_config,
+            command=self._open_supplier_config, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="⚙ 需方配置", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=14),
-            command=self._open_config,
+            command=self._open_config, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="＋ 添加产品", width=110, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._open_form,
+            command=self._open_form, corner_radius=20,
         ).pack(side="left", padx=4)
 
         # ── 供应商检索栏 ──
@@ -118,14 +125,14 @@ class QuotationPage(ctk.CTkFrame):
             sb, text="检索", width=60, height=30,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(size=13),
-            command=lambda: self._on_search(None),
+            command=lambda: self._on_search(None), corner_radius=20,
         ).pack(side="left", padx=(0, 10), pady=12)
 
         self.confirm_btn = ctk.CTkButton(
             sb, text="确认", width=80, height=30,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(size=13, weight="bold"),
-            command=self._on_confirm_supplier,
+            command=self._on_confirm_supplier, corner_radius=20,
         )
         self.confirm_btn.pack(side="left", padx=(0, 10), pady=12)
 
@@ -133,14 +140,14 @@ class QuotationPage(ctk.CTkFrame):
             sb, text="重置", width=80, height=30,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=13, weight="bold"),
-            command=self._on_reset_all,
+            command=self._on_reset_all, corner_radius=20,
         ).pack(side="left", padx=(0, 10), pady=12)
 
         ctk.CTkButton(
             sb, text="管理", width=80, height=30,
             fg_color="#8B7355", hover_color="#6B5B45",
             font=ctk.CTkFont(size=13, weight="bold"),
-            command=self._open_supplier_manage,
+            command=self._open_supplier_manage, corner_radius=20,
         ).pack(side="left", padx=(0, 10), pady=12)
 
         # ── 统计栏 ──
@@ -204,8 +211,8 @@ class QuotationPage(ctk.CTkFrame):
         self.tree.column("材质/工艺", anchor="w")
         self.tree.column("阶梯价格", anchor="w")
 
-        vsb = ttk.Scrollbar(tree_wrap, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(tree_wrap, orient="horizontal", command=self.tree.xview)
+        vsb = ctk.CTkScrollbar(tree_wrap, orientation="vertical", command=self.tree.yview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8)
+        hsb = ctk.CTkScrollbar(tree_wrap, orientation="horizontal", command=self.tree.xview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8, height=8)
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
         self.tree.pack(side="left", fill="both", expand=True)
@@ -547,7 +554,7 @@ class QuotationPage(ctk.CTkFrame):
                     row, text="删除", width=60, height=30,
                     fg_color=self.C["danger"], hover_color="#9A5555",
                     font=ctk.CTkFont(size=13),
-                    command=make_delete(),
+                    command=make_delete(), corner_radius=20,
                 )
                 del_btn.pack(side="right", padx=4, pady=10)
 
@@ -556,12 +563,173 @@ class QuotationPage(ctk.CTkFrame):
                 dlg, text="关闭", width=100, height=36,
                 fg_color="#6B7280", hover_color="#4B5563",
                 font=ctk.CTkFont(size=14),
-                command=dlg.destroy,
+                command=dlg.destroy, corner_radius=20,
             ).pack(pady=(0, 16))
 
         except Exception as e:
             import traceback
             messagebox.showerror("打开管理失败", f"{e}\n\n{traceback.format_exc()}")
+
+    # ══════════════════════════════════════════════
+    #  预览报价单
+    # ══════════════════════════════════════════════
+
+    def _preview_quotation(self):
+        """预览报价单"""
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("提示", "请先在表格中点选一条产品记录，再预览报价单")
+            return
+
+        oid = int(sel[0])
+        product = next((p for p in self.products if p["id"] == oid), None)
+        if not product:
+            return
+
+        supplier = self._pending_supplier or {}
+        supplier_name = supplier.get("supplier_name", "未选择供方")
+        cfg = self.config_data or {}
+
+        preview_win = ctk.CTkToplevel(self)
+        preview_win.title("报价单预览")
+        preview_win.geometry("700x500")
+        preview_win.attributes("-topmost", True)
+        preview_win.configure(fg_color=self.C["bg"])
+
+        # 居中
+        preview_win.update_idletasks()
+        sw = preview_win.winfo_screenwidth()
+        sh = preview_win.winfo_screenheight()
+        preview_win.geometry(f"700x500+{(sw-700)//2}+{(sh-500)//2}")
+
+        # 主容器
+        main = ctk.CTkScrollableFrame(preview_win, fg_color=self.C["bg"])
+        main.pack(fill="both", expand=True, padx=16, pady=16)
+
+        # 标题
+        ctk.CTkLabel(main, text="报价单",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+                     text_color=self.C["text"]).pack(pady=(0, 12))
+
+        # 基本信息卡片
+        info_card = ctk.CTkFrame(main, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        info_card.pack(fill="x", pady=(0, 8))
+
+        info_items = [
+            ("需方名称", cfg.get("buyer_name", "未设置")),
+            ("供方名称", supplier_name),
+            ("报价日期", supplier.get("quote_date", "-")),
+            ("有效期至", supplier.get("quote_validity", "-")),
+        ]
+        for label, value in info_items:
+            row = ctk.CTkFrame(info_card, fg_color="transparent")
+            row.pack(fill="x", padx=12, pady=1)
+            ctk.CTkLabel(row, text=f"{label}：", width=80,
+                         font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                         text_color=self.C["text_secondary"],
+                         anchor="e").pack(side="left")
+            ctk.CTkLabel(row, text=value,
+                         font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                         text_color=self.C["text"],
+                         anchor="w").pack(side="left", padx=(4, 0))
+
+        # 产品明细
+        product_card = ctk.CTkFrame(main, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        product_card.pack(fill="x", pady=(0, 8))
+
+        ctk.CTkLabel(product_card, text="产品明细",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+                     text_color=self.C["text"]).pack(anchor="w", padx=12, pady=(8, 4))
+
+        # 产品名
+        pname = product.get("product_name", "未命名")
+        ctk.CTkLabel(product_card, text=pname,
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+                     text_color=self.C["primary"]).pack(anchor="w", padx=12, pady=(2, 0))
+
+        # 规格信息
+        detail_parts = []
+        if product.get("item_no"):
+            detail_parts.append(f"项目号：{product['item_no']}")
+        if product.get("product_size"):
+            detail_parts.append(f"尺寸：{product['product_size']}")
+        if product.get("material_process"):
+            detail_parts.append(f"材质工艺：{product['material_process']}")
+        if product.get("supply_cycle"):
+            detail_parts.append(f"供货周期：{product['supply_cycle']}")
+        if product.get("carton_spec"):
+            detail_parts.append(f"发货箱规：{product['carton_spec']}")
+
+        detail_text = "  |  ".join(detail_parts) if detail_parts else "暂无详细信息"
+        ctk.CTkLabel(product_card, text=detail_text,
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                     text_color=self.C["text_secondary"]).pack(anchor="w", padx=12, pady=(0, 6))
+
+        # 阶梯价格
+        tiers = product.get("tiers", [])
+        if tiers:
+            tier_card = ctk.CTkFrame(product_card, fg_color="transparent")
+            tier_card.pack(fill="x", padx=8, pady=(0, 8))
+
+            # 表头
+            tier_hdr = ctk.CTkFrame(tier_card, fg_color=self.C["sidebar"], corner_radius=4)
+            tier_hdr.pack(fill="x")
+            for txt, w in [("阶梯数量", 200), ("单价", 120)]:
+                ctk.CTkLabel(tier_hdr, text=txt, width=w,
+                             font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+                             text_color=self.C["text"]).pack(side="left", padx=4, pady=3)
+
+            for t in tiers:
+                row_f = ctk.CTkFrame(tier_card, fg_color="transparent")
+                row_f.pack(fill="x", pady=1)
+                mn = int(t.get("min_qty", 0))
+                mx = t.get("max_qty")
+                up = t.get("unit_price", 0)
+                if mx:
+                    qty_text = f"{mn} - {int(mx)-1}"
+                else:
+                    qty_text = f">={mn}"
+                ctk.CTkLabel(row_f, text=qty_text, width=200,
+                             font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                             text_color=self.C["text"]).pack(side="left", padx=4)
+                ctk.CTkLabel(row_f, text=f"¥{up:.2f}", width=120,
+                             font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                             text_color=self.C["danger"]).pack(side="left", padx=4)
+        else:
+            ctk.CTkLabel(product_card, text="未设置阶梯价格",
+                         font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                         text_color=self.C["text_secondary"]).pack(anchor="w", padx=12, pady=(0, 8))
+
+        # 底部条款（如果有配置）
+        if cfg.get("payment_terms") or cfg.get("quote_requirement"):
+            terms_card = ctk.CTkFrame(main, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+            terms_card.pack(fill="x", pady=(0, 8))
+            ctk.CTkLabel(terms_card, text="条款信息",
+                         font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+                         text_color=self.C["text"]).pack(anchor="w", padx=12, pady=(6, 2))
+            for term_key, term_label in [
+                ("payment_terms", "付款方式"),
+                ("transport_method", "运输方式"),
+                ("delivery_docs", "发货文件"),
+                ("quote_requirement", "报价要求"),
+            ]:
+                val = cfg.get(term_key, "")
+                if val:
+                    ctk.CTkLabel(terms_card, text=f"{term_label}：{val}",
+                                 font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                                 text_color=self.C["text_secondary"]).pack(anchor="w", padx=12, pady=1)
+
+        # 底部按钮行
+        btn_row = ctk.CTkFrame(preview_win, fg_color="transparent")
+        btn_row.pack(fill="x", padx=16, pady=8)
+        ctk.CTkButton(btn_row, text="关闭", width=80, height=32,
+                       font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                       fg_color="#6B7280", hover_color="#4B5563",
+                       command=preview_win.destroy, corner_radius=20).pack(side="right")
+        ctk.CTkButton(btn_row, text="导出 Excel", width=100, height=32,
+                       font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                       fg_color=self.C["success"], hover_color="#7A9A6E",
+                       command=lambda: [preview_win.destroy(), self._export_quotation()], corner_radius=20).pack(side="right", padx=(0, 8))
 
     # ══════════════════════════════════════════════
     #  导出报价单
@@ -904,7 +1072,7 @@ class QuotationForm(ctk.CTkToplevel):
         ctk.CTkButton(
             tier_header, text="＋ 添加阶梯", width=100, height=30,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=13), command=self._add_tier_row,
+            font=ctk.CTkFont(size=13), command=self._add_tier_row, corner_radius=20,
         ).pack(side="right")
 
         self.tier_container = ctk.CTkFrame(tier_frame, fg_color="transparent")
@@ -931,13 +1099,13 @@ class QuotationForm(ctk.CTkToplevel):
             btn_frame, text="💾 保存", width=100, height=38,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._save,
+            command=self._save, corner_radius=20,
         ).pack(side="right", padx=8)
 
         ctk.CTkButton(
             btn_frame, text="取消", width=80, height=38,
             fg_color="#9CA3AF", hover_color="#6B7280",
-            font=ctk.CTkFont(size=14), command=self.destroy,
+            font=ctk.CTkFont(size=14), command=self.destroy, corner_radius=20,
         ).pack(side="right", padx=8)
 
     def _add_tier_row(self, data=None):
@@ -958,7 +1126,7 @@ class QuotationForm(ctk.CTkToplevel):
 
         del_btn = ctk.CTkButton(row, text="✕", width=40, height=30,
                                 fg_color=self.C["danger"], hover_color="#9A5555",
-                                font=ctk.CTkFont(size=13), command=_remove)
+                                font=ctk.CTkFont(size=13), command=_remove, corner_radius=20)
         del_btn.pack(side="left", padx=4)
 
         tier_data = {"row": row, "min": min_entry, "max": max_entry}
@@ -1092,13 +1260,13 @@ class QuotationConfigDialog(ctk.CTkToplevel):
             btn_frame, text="💾 保存配置", width=110, height=38,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._save,
+            command=self._save, corner_radius=20,
         ).pack(side="right", padx=8)
 
         ctk.CTkButton(
             btn_frame, text="取消", width=80, height=38,
             fg_color="#9CA3AF", hover_color="#6B7280",
-            font=ctk.CTkFont(size=14), command=self.destroy,
+            font=ctk.CTkFont(size=14), command=self.destroy, corner_radius=20,
         ).pack(side="right", padx=8)
 
     def _load_config(self):
@@ -1178,13 +1346,13 @@ class QuotationSupplierDialog(ctk.CTkToplevel):
             btn_frame, text="💾 保存", width=100, height=38,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._save,
+            command=self._save, corner_radius=20,
         ).pack(side="right", padx=8)
 
         ctk.CTkButton(
             btn_frame, text="取消", width=80, height=38,
             fg_color="#9CA3AF", hover_color="#6B7280",
-            font=ctk.CTkFont(size=14), command=self.destroy,
+            font=ctk.CTkFont(size=14), command=self.destroy, corner_radius=20,
         ).pack(side="right", padx=8)
 
     def _save(self):

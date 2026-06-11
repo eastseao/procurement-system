@@ -86,7 +86,7 @@ class ProductBomPage(ctk.CTkFrame):
             row3, text="🔍 查询", width=90, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-            command=self._on_query,
+            command=self._on_query, corner_radius=20,
         )
         self.query_btn.pack(side="left", padx=(0, 8))
 
@@ -95,7 +95,7 @@ class ProductBomPage(ctk.CTkFrame):
             fg_color="transparent", text_color=self.C["primary"],
             border_color=self.C["border"], border_width=1,
             font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-            command=self._on_reset,
+            command=self._on_reset, corner_radius=20,
         )
         self.reset_btn.pack(side="left", padx=(0, 16))
 
@@ -103,7 +103,7 @@ class ProductBomPage(ctk.CTkFrame):
             row3, text="📥 导入Excel", width=100, height=34,
             fg_color=self.C["success"], hover_color="#7A9472",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-            command=self._on_import,
+            command=self._on_import, corner_radius=20,
         )
         self.import_btn.pack(side="left", padx=(0, 8))
 
@@ -111,7 +111,7 @@ class ProductBomPage(ctk.CTkFrame):
             row3, text="📤 导出Excel", width=100, height=34,
             fg_color=self.C["warning"], hover_color="#B89A5D",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-            command=self._on_export,
+            command=self._on_export, corner_radius=20,
         )
         self.export_btn.pack(side="left")
 
@@ -120,7 +120,7 @@ class ProductBomPage(ctk.CTkFrame):
             fg_color="transparent", text_color=self.C["success"],
             border_color=self.C["success"], border_width=1,
             font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-            command=self._on_add,
+            command=self._on_add, corner_radius=20,
         ).pack(side="right")
 
         # ── 表格区 ─────────────────────────────────
@@ -172,8 +172,8 @@ class ProductBomPage(ctk.CTkFrame):
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width, minwidth=60, stretch=True, anchor="center")
 
-        vsb = ttk.Scrollbar(tree_container, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(tree_container, orient="horizontal", command=self.tree.xview)
+        vsb = ctk.CTkScrollbar(tree_container, orientation="vertical", command=self.tree.yview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8)
+        hsb = ctk.CTkScrollbar(tree_container, orientation="horizontal", command=self.tree.xview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8, height=8)
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
         self.tree.grid(row=0, column=0, sticky="nsew")
@@ -375,7 +375,7 @@ class ProductBomPage(ctk.CTkFrame):
             btn_frame, text="✓ 保存", width=100, height=36,
             fg_color=self.C["success"], hover_color="#7A9472",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
-            command=_save,
+            command=_save, corner_radius=20,
         ).pack(side="right", padx=(8, 0))
 
         ctk.CTkButton(
@@ -383,7 +383,7 @@ class ProductBomPage(ctk.CTkFrame):
             fg_color="transparent", text_color=self.C["text_secondary"],
             border_color=self.C["border"], border_width=1,
             font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-            command=dialog.destroy,
+            command=dialog.destroy, corner_radius=20,
         ).pack(side="right")
 
         if not is_new:
@@ -391,7 +391,7 @@ class ProductBomPage(ctk.CTkFrame):
                 btn_frame, text="🗑 删除", width=80, height=36,
                 fg_color=self.C["danger"], hover_color="#A05A5A",
                 font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-                command=lambda: self._on_delete(record["id"], dialog),
+                command=lambda: self._on_delete(record["id"], dialog), corner_radius=20,
             ).pack(side="left")
 
     def _on_delete(self, item_id, dialog):

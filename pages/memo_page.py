@@ -47,14 +47,14 @@ class MemoPage(ctk.CTkFrame):
             btn_frame, text="＋ 新增备忘", width=120, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
-            command=self._open_form,
+            command=self._open_form, corner_radius=20,
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📤 导出Excel", width=110, height=34,
             fg_color=self.C["success"], hover_color="#7A9470",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
-            command=self._export_xlsx,
+            command=self._export_xlsx, corner_radius=20,
         ).pack(side="right", padx=4)
 
         # ── 搜索栏 ─────────────────────────────────────
@@ -105,7 +105,7 @@ class MemoPage(ctk.CTkFrame):
             inner, text="查询", width=70, height=32,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
-            command=self._do_search,
+            command=self._do_search, corner_radius=20,
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
@@ -113,7 +113,7 @@ class MemoPage(ctk.CTkFrame):
             fg_color=self.C["border"], text_color=self.C["text"],
             hover_color=self.C["sidebar_hover"],
             font=ctk.CTkFont(family="Microsoft YaHei", size=13),
-            command=self._reset,
+            command=self._reset, corner_radius=20,
         ).pack(side="left", padx=4)
 
         # 统计
@@ -154,8 +154,10 @@ class MemoPage(ctk.CTkFrame):
         self.tree.heading("action", text="操作")
         self.tree.column("action", width=130, minwidth=40, stretch=True, anchor="center")
 
-        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
+        vsb = ctk.CTkScrollbar(tree_frame, orientation="vertical", command=self.tree.yview,
+                              button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8)
+        hsb = ctk.CTkScrollbar(tree_frame, orientation="horizontal", command=self.tree.xview,
+                              button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8, height=8)
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
         vsb.pack(side="right", fill="y")
         hsb.pack(side="bottom", fill="x")
@@ -168,6 +170,18 @@ class MemoPage(ctk.CTkFrame):
         # 事件绑定：单击选中高亮行
         self.tree.bind("<Button-1>", self._on_click)
         self.tree.bind("<Double-1>", self._on_double_click)
+
+        # ── 右键菜单 ──
+        self._context_menu = tk.Menu(self, tearoff=0,
+            bg="#FFFFFF", fg="#4A3728",
+            activebackground="#E8D5C4", activeforeground="#4A3728",
+            font=("Microsoft YaHei", 10),
+        )
+        self._context_menu.add_command(label="📝 编辑", command=self._on_edit_selected)
+        self._context_menu.add_command(label="📋 复制", command=self._on_copy_selected)
+        self._context_menu.add_separator()
+        self._context_menu.add_command(label="🗑️ 删除", command=self._on_delete_selected)
+        self.tree.bind("<Button-3>", self._on_tree_right_click)
 
     def _refresh_project_filter(self):
         projects = self.db.get_projects()
@@ -252,6 +266,42 @@ class MemoPage(ctk.CTkFrame):
         if col_idx == len(TABLE_COLS):
             return  # 操作列双击不处理，交给单击
         self._open_form(mid)
+
+    # ── 右键菜单回调 ─────────────────────────────────
+    def _on_tree_right_click(self, event):
+        """右键点击表格行→弹出菜单"""
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+            self._context_menu.post(event.x_root, event.y_root)
+
+    def _on_edit_selected(self):
+        """编辑选中行"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        mid = int(selection[0])
+        self._open_form(mid)
+
+    def _on_copy_selected(self):
+        """复制选中行信息到剪贴板"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        mid = int(selection[0])
+        rec = self.db.get_memo(mid)
+        if rec:
+            text = f"内容:{rec.get('content','')} 项目:{rec.get('project','')} 状态:{rec.get('status','')}"
+            self.clipboard_clear()
+            self.clipboard_append(text)
+
+    def _on_delete_selected(self):
+        """删除选中行"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        mid = int(selection[0])
+        self._delete(mid)
 
     def _open_form(self, mid=None):
         try:
@@ -435,11 +485,11 @@ class MemoForm(ctk.CTkToplevel):
         ctk.CTkButton(btn_row, text="✓ 保存", width=120, height=38,
                       fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
                       font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
-                      command=self._save).pack(side="left", padx=4)
+                      command=self._save, corner_radius=20).pack(side="left", padx=4)
         ctk.CTkButton(btn_row, text="✕ 关闭", width=80, height=38,
                       fg_color="#A0907B", hover_color="#8B7B68",
                       font=ctk.CTkFont(family="Microsoft YaHei", size=14),
-                      command=self.destroy).pack(side="left", padx=4)
+                      command=self.destroy, corner_radius=20).pack(side="left", padx=4)
 
     def _section(self, parent, title):
         f = ctk.CTkFrame(parent, fg_color="transparent")

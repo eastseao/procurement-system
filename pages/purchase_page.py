@@ -32,27 +32,27 @@ class PurchasePage(ctk.CTkFrame):
         self.archive_btn = ctk.CTkButton(
             btn_frame, text="📁 查看归档", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=14), command=self._toggle_archive)
+            font=ctk.CTkFont(size=14), command=self._toggle_archive, corner_radius=20)
         self.archive_btn.pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="＋ 新增垫付", width=110, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._open_form).pack(side="left", padx=4)
+            command=self._open_form, corner_radius=20).pack(side="left", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📤 导出Excel", width=110, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._export_xlsx).pack(side="right", padx=4)
+            command=self._export_xlsx, corner_radius=20).pack(side="right", padx=4)
 
         # ── v1.2 新增：导入xlsx 按钮 ──
         ctk.CTkButton(
             btn_frame, text="📥 导入xlsx", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=14),
-            command=self._import_xlsx).pack(side="right", padx=4)
+            command=self._import_xlsx, corner_radius=20).pack(side="right", padx=4)
 
         # 统计栏
         self.stats_frame = ctk.CTkFrame(self, fg_color=self.C["card"],
@@ -112,7 +112,7 @@ class PurchasePage(ctk.CTkFrame):
         ctk.CTkButton(filter_frame, text="↺ 刷新", width=60, height=28,
                       fg_color=self.C["border"], text_color=self.C["text"],
                       hover_color="#CBD5E1", font=ctk.CTkFont(size=13),
-                      command=self._load_records).pack(side="left", padx=8)
+                      command=self._load_records, corner_radius=20).pack(side="left", padx=8)
 
         # 列表区（带滚动）
         # 表格区域 - 阴影分层：z1 → z2 → z3
@@ -153,7 +153,7 @@ class PurchasePage(ctk.CTkFrame):
             self.tree.heading(cid, text=label)
             self.tree.column(cid, width=width, minwidth=40, stretch=True, anchor="center" if cid != "items_summary" else "w")
 
-        vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        vsb = ctk.CTkScrollbar(tree_frame, orientation="vertical", command=self.tree.yview, button_color=self.C["border"], button_hover_color=self.C.get("sidebar_hover", "#ddd"), width=8)
         self.tree.configure(yscrollcommand=vsb.set)
         self.tree.pack(side="left", fill="both", expand=True)
         self.tree.bind("<Button-1>", self._on_click)
@@ -166,6 +166,18 @@ class PurchasePage(ctk.CTkFrame):
         self.tree.tag_configure("hover", background="#FFF2E6")
         self.tree.bind("<Motion>", self._on_hover)
         self.tree.bind("<Leave>", self._on_leave)
+
+        # ── 右键菜单 ──
+        self._context_menu = tk.Menu(self, tearoff=0,
+            bg="#FFFFFF", fg="#4A3728",
+            activebackground="#E8D5C4", activeforeground="#4A3728",
+            font=("Microsoft YaHei", 10),
+        )
+        self._context_menu.add_command(label="📝 编辑", command=self._on_edit_selected)
+        self._context_menu.add_command(label="📋 复制", command=self._on_copy_selected)
+        self._context_menu.add_separator()
+        self._context_menu.add_command(label="🗑️ 删除", command=self._on_delete_selected)
+        self.tree.bind("<Button-3>", self._on_tree_right_click)
 
     def _refresh_project_filter(self):
         projects = ["全部"] + self.db.get_projects()
@@ -482,6 +494,44 @@ class PurchasePage(ctk.CTkFrame):
                 # bbox 不可见时，直接删除（兜底）
                 self._delete_record(pid)
 
+    # ── 右键菜单回调 ──────────────────────────────
+    def _on_tree_right_click(self, event):
+        """右键点击表格行→弹出菜单"""
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+            self._context_menu.post(event.x_root, event.y_root)
+
+    def _on_edit_selected(self):
+        """编辑选中行"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        pid = int(selection[0])
+        self._open_form(pid, view_only=self.show_archived)
+
+    def _on_copy_selected(self):
+        """复制选中行信息到剪贴板"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        pid = int(selection[0])
+        records = self.db.get_purchases(archived=1 if self.show_archived else 0)
+        rec = next((r for r in records if r["id"] == pid), None)
+        if rec:
+            text = f"项目:{rec.get('project','')} 经手人:{rec.get('handler','')} 合计:¥{rec.get('total',0):.2f}"
+            self.clipboard_clear()
+            self.clipboard_append(text)
+
+    def _on_delete_selected(self):
+        """删除选中行"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        pid = int(selection[0])
+        if messagebox.askyesno("删除确认", "确定删除此采购垫付记录？", icon="warning"):
+            self._delete_record(pid)
+
     def _on_hover(self, event):
         """鼠标悬浮时高亮行背景"""
         item = self.tree.identify_row(event.y)
@@ -574,7 +624,7 @@ class PurchaseForm(ctk.CTkToplevel):
         ctk.CTkButton(row0, text="＋项目", width=60, height=28,
                       fg_color="#E2E8F0", text_color=self.C["text"],
                       hover_color="#CBD5E1", font=ctk.CTkFont(size=12),
-                      command=self._add_project).grid(row=1, column=2, padx=4)
+                      command=self._add_project, corner_radius=20).grid(row=1, column=2, padx=4)
 
         ctk.CTkLabel(row0, text="支付方式 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).grid(row=1, column=3, padx=(8, 4), pady=4, sticky="w")
@@ -615,7 +665,7 @@ class PurchaseForm(ctk.CTkToplevel):
         ctk.CTkButton(card, text="＋ 添加物料行", height=30, width=120,
                       fg_color="#E2E8F0", text_color=self.C["text"],
                       hover_color="#CBD5E1", font=ctk.CTkFont(size=13),
-                      command=self._add_item_row).pack(anchor="w", padx=16, pady=4)
+                      command=self._add_item_row, corner_radius=20).pack(anchor="w", padx=16, pady=4)
 
         total_row = ctk.CTkFrame(card, fg_color="transparent")
         total_row.pack(fill="x", padx=16, pady=4)
@@ -638,10 +688,10 @@ class PurchaseForm(ctk.CTkToplevel):
             ctk.CTkButton(btn_row, text="✓ 保存", width=120, height=38,
                           fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
                           font=ctk.CTkFont(size=16, weight="bold"),
-                          command=self._save).pack(side="left", padx=4)
+                          command=self._save, corner_radius=20).pack(side="left", padx=4)
         ctk.CTkButton(btn_row, text="✕ 关闭", width=80, height=38,
                       fg_color="#6B7280", hover_color="#4B5563",
-                      font=ctk.CTkFont(size=14), command=self.destroy).pack(side="left", padx=4)
+                      font=ctk.CTkFont(size=14), command=self.destroy, corner_radius=20).pack(side="left", padx=4)
 
     def _section(self, parent, title):
         f = ctk.CTkFrame(parent, fg_color="transparent")
@@ -678,7 +728,7 @@ class PurchaseForm(ctk.CTkToplevel):
         del_btn = ctk.CTkButton(row, text="✕", width=32, height=28,
                                  fg_color="#FEE2E2", text_color=self.C["danger"],
                                  hover_color="#FECACA", font=ctk.CTkFont(size=12),
-                                 command=lambda r=row: self._remove_item_row(r))
+                                 command=lambda r=row: self._remove_item_row(r), corner_radius=20)
         del_btn.pack(side="left", padx=2)
 
         self.item_rows.append({"frame": row, "vars": vars_})

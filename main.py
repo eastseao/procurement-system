@@ -273,19 +273,33 @@ class WheelScrollFrame(ctk.CTkFrame):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("")  # 空标题（不显示文字）
+        self.title("采购助手")  # 窗口标题
         self.geometry("1280x800")
         self.minsize(1100, 700)
         self.configure(fg_color=COLORS["bg"])
 
-        # 居中显示
+        # ── 隐藏系统标题栏，使用自定义标题栏 ──
+        self.overrideredirect(True)
+
+        # ── 圆角窗口（延迟触发，等窗口完全初始化后再设置）──
+        self._window_round_radius = 12
+        self.after(200, self._set_rounded_corners)
+
+        # ── 居中显示 ──
         self.update_idletasks()
         w = self.winfo_screenwidth()
         h = self.winfo_screenheight()
         self.geometry(f"1280x800+{(w-1280)//2}+{(h-800)//2}")
 
+        # ── 确保窗口在任务栏可见（overrideredirect 后需要手动设置）──
+        self.after(100, self._ensure_taskbar_visible)
+
         self.db = Database(_data_dir)
         self.current_page = None
+        self._is_fullscreen = False  # 全屏状态标志
+        self._is_maximized = False   # 最大化状态标志
+        self._drag_data = {"x": 0, "y": 0}  # 窗口拖动数据
+        self._sidebar_collapsed = False     # 侧边栏折叠状态
 
         # ── 系统托盘状态 ──
         self._tray_enabled = settings.get("tray_enabled", "0") == "1"
@@ -294,6 +308,14 @@ class App(ctk.CTk):
 
         self._build_ui()
         self._switch_page("dashboard")
+
+        # ── 恢复侧边栏折叠状态 ──
+        _sidebar_collapsed = settings.get("sidebar_collapsed", "0") == "1"
+        if _sidebar_collapsed:
+            # 当前是展开状态（_build_ui 后），需要收起
+            self._sidebar_collapsed = False  # 让 _toggle_sidebar 切换到收起
+            self._toggle_sidebar()
+            # _toggle_sidebar() 内部已经更新了标题栏折叠按钮文字
 
         # ── 标题栏/任务栏图标：全部使用同仁堂Logo 256 高清版（Win32 API） ──
         def _fix_icons():
@@ -348,6 +370,137 @@ class App(ctk.CTk):
 
         # ── 版本更新检查（后台线程，不阻塞 UI）──
         self.after(800, self._check_version_updates)
+
+        # ── 全局热键绑定 ──
+        self._bind_global_hotkeys()
+
+    def _ensure_taskbar_visible(self):
+        """确保 overrideredirect 窗口在任务栏可见"""
+        try:
+            hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+            if hwnd:
+                GWL_EXSTYLE = -20
+                WS_EX_APPWINDOW = 0x00040000
+                WS_EX_TOOLWINDOW = 0x00000080
+                ex_style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                ex_style = (ex_style | WS_EX_APPWINDOW) & ~WS_EX_TOOLWINDOW
+                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style)
+        except Exception:
+            pass
+
+    def _set_rounded_corners(self):
+        """设置窗口圆角（仅当窗口尺寸正常时生效，避免黑屏）"""
+        try:
+            hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+            if not hwnd:
+                return
+            w = self.winfo_width()
+            h = self.winfo_height()
+            if w < 200 or h < 200:
+                return  # 窗口尚未完成初始化，跳过
+            r = self._window_round_radius
+            rgn = ctypes.windll.gdi32.CreateRoundRectRgn(0, 0, w + 1, h + 1, r * 2, r * 2)
+            ctypes.windll.user32.SetWindowRgn(hwnd, rgn, True)
+        except Exception:
+            pass
+
+    # ── 窗口缩放方法 ──
+    def _start_resize(self, event):
+        self._resize_start_x = event.x_root
+        self._resize_start_y = event.y_root
+        self._resize_start_w = self.winfo_width()
+        self._resize_start_h = self.winfo_height()
+
+    def _on_resize(self, event):
+        dx = event.x_root - self._resize_start_x
+        dy = event.y_root - self._resize_start_y
+        new_w = max(1100, self._resize_start_w + dx)
+        new_h = max(700, self._resize_start_h + dy)
+        self.geometry(f"{new_w}x{new_h}")
+
+    # ── 窗口拖动方法 ──
+    def _start_drag(self, event):
+        self._drag_data["x"] = event.x
+        self._drag_data["y"] = event.y
+
+    def _on_drag(self, event):
+        if self._is_maximized:
+            return
+        dx = event.x - self._drag_data["x"]
+        dy = event.y - self._drag_data["y"]
+        x = self.winfo_x() + dx
+        y = self.winfo_y() + dy
+        self.geometry(f"+{x}+{y}")
+
+    # ── 窗口控制方法 ──
+    def _minimize_window(self):
+        """最小化窗口（Win32 ShowWindow，overrideredirect 兼容）"""
+        try:
+            hwnd = ctypes.windll.user32.GetParent(self.winfo_id())
+            if hwnd:
+                SW_MINIMIZE = 6
+                ctypes.windll.user32.ShowWindow(hwnd, SW_MINIMIZE)
+        except Exception:
+            self.iconify()  # 兜底
+
+    def _maximize_restore_window(self):
+        """最大化/还原窗口"""
+        if self._is_maximized:
+            self.state("normal")
+            self._is_maximized = False
+        else:
+            self.state("zoomed")
+            self._is_maximized = True
+        self.after(100, self._set_rounded_corners)  # 尺寸变化后更新圆角
+
+    def _close_window(self):
+        """关闭窗口（触发 _on_closing → 隐藏到托盘）"""
+        self._on_closing()
+
+    def _bind_global_hotkeys(self):
+        """绑定全局热键：F11全屏、Ctrl+S保存、Ctrl+F搜索、Ctrl+E导出"""
+        # F11: 全屏切换
+        self.bind("<F11>", lambda e: self._toggle_fullscreen())
+        # Esc: 退出全屏
+        self.bind("<Escape>", lambda e: self._exit_fullscreen())
+        # Ctrl+S: 保存（各页面自行处理）
+        self.bind("<Control-s>", lambda e: self._on_ctrl_s())
+        self.bind("<Control-S>", lambda e: self._on_ctrl_s())
+        # Ctrl+F: 聚焦搜索
+        self.bind("<Control-f>", lambda e: self._on_ctrl_f())
+        self.bind("<Control-F>", lambda e: self._on_ctrl_f())
+        # Ctrl+E: 导出
+        self.bind("<Control-e>", lambda e: self._on_ctrl_e())
+        self.bind("<Control-E>", lambda e: self._on_ctrl_e())
+
+    def _toggle_fullscreen(self):
+        """切换全屏模式（F11）"""
+        self._is_fullscreen = not self._is_fullscreen
+        self.attributes('-fullscreen', self._is_fullscreen)
+        if not self._is_fullscreen:
+            self.state('normal')  # 退出全屏后恢复正常窗口
+
+    def _exit_fullscreen(self):
+        """退出全屏（Esc）"""
+        if self._is_fullscreen:
+            self._is_fullscreen = False
+            self.attributes('-fullscreen', False)
+            self.state('normal')
+
+    def _on_ctrl_s(self):
+        """Ctrl+S: 触发当前页面的保存操作"""
+        if self.current_page and hasattr(self.current_page, '_on_ctrl_s'):
+            self.current_page._on_ctrl_s()
+
+    def _on_ctrl_f(self):
+        """Ctrl+F: 聚焦当前页面的搜索框"""
+        if self.current_page and hasattr(self.current_page, '_on_ctrl_f'):
+            self.current_page._on_ctrl_f()
+
+    def _on_ctrl_e(self):
+        """Ctrl+E: 触发当前页面的导出操作"""
+        if self.current_page and hasattr(self.current_page, '_on_ctrl_e'):
+            self.current_page._on_ctrl_e()
 
     def _check_version_updates(self):
         """后台检查 GitHub 是否有新版本，有则弹出通知"""
@@ -665,15 +818,110 @@ del "{new_exe_path}" > nul 2>&1
             pass  # 不影响主功能，静默失败
 
     def _build_ui(self):
-        # ── 侧边栏（窄版图标栏，图标+文字纵向排列）─────────
-        self._sidebar_width = 72
+        # ── 自定义标题栏（替换系统标题栏）──────────────────────
+        _title_bar_height = 40
+        self._title_bar = ctk.CTkFrame(
+            self, height=_title_bar_height,
+            fg_color=COLORS["sidebar"], corner_radius=0
+        )
+        self._title_bar.pack(side="top", fill="x")
+        self._title_bar.pack_propagate(False)
+
+        # ── 生成折叠按钮图标 ──
+        _fold_icon_color = COLORS["sidebar_text"]
+        _fold_icon_size = (20, 20)  # 缩小 20%（原 24）
+        self._fold_icon_expanded = None   # 侧边栏展开时显示（竖线在左）
+        self._fold_icon_collapsed = None  # 侧边栏折叠时显示（竖线在右）
+        if PIL_AVAILABLE:
+            try:
+                # 展开状态图标：矩形 + 左侧竖线
+                _img_exp = Image.new("RGBA", (24, 24), (0, 0, 0, 0))
+                from PIL import ImageDraw
+                _draw_exp = ImageDraw.Draw(_img_exp)
+                _draw_exp.rounded_rectangle([2, 2, 22, 22], radius=3, outline=_fold_icon_color, width=2)
+                _draw_exp.line([7, 5, 7, 19], fill=_fold_icon_color, width=2)
+                self._fold_icon_expanded = ctk.CTkImage(light_image=_img_exp, size=_fold_icon_size)
+
+                # 折叠状态图标：矩形 + 右侧竖线
+                _img_col = Image.new("RGBA", (24, 24), (0, 0, 0, 0))
+                _draw_col = ImageDraw.Draw(_img_col)
+                _draw_col.rounded_rectangle([2, 2, 22, 22], radius=3, outline=_fold_icon_color, width=2)
+                _draw_col.line([17, 5, 17, 19], fill=_fold_icon_color, width=2)
+                self._fold_icon_collapsed = ctk.CTkImage(light_image=_img_col, size=_fold_icon_size)
+            except Exception:
+                pass
+
+        # 折叠按钮（标题栏最左侧）
+        self._title_collapse_btn = ctk.CTkButton(
+            self._title_bar, text="",
+            image=self._fold_icon_expanded,
+            width=26, height=26,
+            fg_color="transparent",
+            hover_color=COLORS["sidebar_hover"],
+            corner_radius=5,
+            command=self._toggle_sidebar,
+        )
+        self._title_collapse_btn.pack(side="left", padx=(16, 2), pady=7)
+
+        self._title_bar.bind("<Button-1>", self._start_drag)
+        self._title_bar.bind("<B1-Motion>", self._on_drag)
+
+        # ── 窗口控制按钮（右侧，Apple 风格圆点）──
+        _dot_size = 14
+        _dot_radius = 7
+        _dot_pady = 13  # (40 - 14) / 2
+
+        # 关闭 — 红色
+        self._btn_close = ctk.CTkButton(
+            self._title_bar, text="",
+            width=_dot_size, height=_dot_size,
+            fg_color="#FF5F57",
+            hover_color="#FF7B75",
+            corner_radius=_dot_radius,
+            command=self._close_window,
+        )
+        self._btn_close.pack(side="right", padx=(4, 10), pady=_dot_pady)
+
+        # 最大化 — 绿色
+        self._btn_maximize = ctk.CTkButton(
+            self._title_bar, text="",
+            width=_dot_size, height=_dot_size,
+            fg_color="#28C840",
+            hover_color="#4DD865",
+            corner_radius=_dot_radius,
+            command=self._maximize_restore_window,
+        )
+        self._btn_maximize.pack(side="right", padx=4, pady=_dot_pady)
+
+        # 最小化 — 黄色
+        self._btn_minimize = ctk.CTkButton(
+            self._title_bar, text="",
+            width=_dot_size, height=_dot_size,
+            fg_color="#FFBD2E",
+            hover_color="#FFCC5C",
+            corner_radius=_dot_radius,
+            command=self._minimize_window,
+        )
+        self._btn_minimize.pack(side="right", padx=4, pady=_dot_pady)
+
+        # ── 底层容器 ──
+        self._bottom_container = ctk.CTkFrame(self, fg_color=COLORS["bg"], corner_radius=0)
+        self._bottom_container.pack(side="top", fill="both", expand=True)
+
+        # ── 窗口缩放手柄（右下角）──
+        self._resize_grip = ctk.CTkFrame(self, width=16, height=16,
+            fg_color="transparent", corner_radius=0, cursor="sizing")
+        self._resize_grip.place(relx=1.0, rely=1.0, anchor="se")
+        self._resize_grip.bind("<Button-1>", self._start_resize)
+        self._resize_grip.bind("<B1-Motion>", self._on_resize)
 
         # 加载导航栏图标（线性版 + 选中实心版）
         self._nav_icon_images = {}         # 线性（未选中）
         self._nav_icon_active_images = {}  # 实心（选中）
         if PIL_AVAILABLE:
             for k, path in NAV_ICON_PATHS.items():
-                sz = (22, 22)
+                # 有文字项图标：原始22 × 0.95 = 21
+                sz = (21, 21)
                 # 线性版
                 if os.path.exists(path):
                     try:
@@ -694,11 +942,8 @@ del "{new_exe_path}" > nul 2>&1
                 else:
                     self._nav_icon_active_images[k] = None
 
-        # ── 底层容器 ──
-        self._bottom_container = ctk.CTkFrame(self, fg_color=COLORS["bg"], corner_radius=0)
-        self._bottom_container.pack(side="top", fill="both", expand=True)
-
         # ── 侧边栏 ──
+        self._sidebar_width = 72
         self.sidebar = ctk.CTkFrame(
             self._bottom_container, width=self._sidebar_width,
             fg_color=COLORS["sidebar"], corner_radius=0, border_width=0
@@ -716,7 +961,7 @@ del "{new_exe_path}" > nul 2>&1
         )
         self.nav_canvas.pack(side="top", fill="both", expand=True)
 
-        # 导航项列表（purchase/travel/memo 只显示图标，无文字；settings 移到底部）
+        # 导航项列表（purchase/travel/memo 只显示图标，放在底部设置上方）
         # 格式: (page_key, 显示文字, icon_key)  文字为空则只显示图标
         self.NAV_ITEMS = [
             ("dashboard",   "看板",  "dashboard"),
@@ -728,9 +973,6 @@ del "{new_exe_path}" > nul 2>&1
             ("query",       "台账",  "query"),
             ("product_bom", "BOM",   "product_bom"),
             ("collection",  "应付",  "collection"),
-            ("purchase",    "",      "purchase"),    # 只图标
-            ("travel",      "",      "travel"),      # 只图标
-            ("memo",        "",      "memo"),        # 只图标
         ]
 
         self.nav_buttons = {}
@@ -742,9 +984,16 @@ del "{new_exe_path}" > nul 2>&1
         bottom_sep = ctk.CTkFrame(self.sidebar, fg_color=COLORS["divider"], height=1)
         bottom_sep.pack(side="bottom", fill="x", padx=8, pady=(4, 8))
 
-        # ── 底部导航区（设置按钮）──
+        # ── 底部导航区（垫付/差旅/待办图标 + 设置按钮）──
         self.nav_bottom = ctk.CTkFrame(self.sidebar, fg_color="transparent", corner_radius=0)
         self.nav_bottom.pack(side="bottom", fill="x", padx=4, pady=(0, 8))
+
+        # 垫付/差旅/待办 三个图标（纵向排列在设置上方）
+        self._add_nav_item("purchase", "", "purchase", parent=self.nav_bottom)
+        self._add_nav_item("travel",   "", "travel",   parent=self.nav_bottom)
+        self._add_nav_item("memo",     "", "memo",     parent=self.nav_bottom)
+
+        # 设置按钮
         self._add_nav_item("settings", "", "settings", parent=self.nav_bottom)
 
         # ── 右侧主内容区（圆角矩形白色背景）──────────────
@@ -755,7 +1004,7 @@ del "{new_exe_path}" > nul 2>&1
         )
         self.main_area.pack(side="left", fill="both", expand=True, padx=(12, 12), pady=(12, 12))
 
-        # 页面内容容器
+        # 页面内容容器（直接占满 main_area）
         self._page_content = ctk.CTkFrame(self.main_area, fg_color="transparent", corner_radius=16)
         self._page_content.pack(fill="both", expand=True, padx=4, pady=4)
 
@@ -763,6 +1012,15 @@ del "{new_exe_path}" > nul 2>&1
         """添加导航按钮；parent=None时用nav_canvas，否则用指定parent"""
         _parent = parent or self.nav_canvas
         has_text = bool(item_label)
+
+        # 图标尺寸：纯图标项分两种（垫付/差旅/待办/设置缩小10%，其他缩小5%）
+        _small_icon_keys = {"purchase", "travel", "memo", "settings"}
+        if has_text:
+            _icon_sz = (21, 21)  # 有文字项：×0.95
+        elif icon_key in _small_icon_keys:
+            _icon_sz = (23, 23)  # 纯图标-底部四项：×0.90
+        else:
+            _icon_sz = (25, 25)  # 纯图标-其他：×0.95
 
         if has_text:
             # ── 有文字项：CTkButton 图标+文字 ──
@@ -778,11 +1036,11 @@ del "{new_exe_path}" > nul 2>&1
                 hover_color=COLORS["sidebar_hover"],
                 anchor="center",
                 width=56,
-                height=48,
-                corner_radius=8,
+                height=40,   # 缩小高度以减少图标与文字间距
+                corner_radius=20,
                 command=lambda k=item_key: self._switch_page(k),
             )
-            btn.pack(pady=2)
+            btn.pack(pady=(6, 0))  # 加大导航项间距
             self.nav_buttons[item_key] = btn
         else:
             # ── 纯图标项：CTkFrame + CTkLabel（绕过CTkButton空文本渲染bug）──
@@ -790,21 +1048,25 @@ del "{new_exe_path}" > nul 2>&1
             img = None
             if PIL_AVAILABLE and os.path.exists(icon_path):
                 try:
-                    img = ctk.CTkImage(light_image=Image.open(icon_path), size=(26, 26))
+                    img = ctk.CTkImage(light_image=Image.open(icon_path), size=_icon_sz)
                 except Exception:
                     pass
 
             # 可点击容器
             container = ctk.CTkFrame(
                 _parent, fg_color="transparent", corner_radius=8,
-                width=56, height=44,
+                width=56, height=36,  # 缩小高度
             )
-            container.pack(pady=2)
+            # 垫付/差旅/待办 往下放：增加顶部间距
+            if icon_key in {"purchase", "travel", "memo"}:
+                container.pack(pady=(8, 1))
+            else:
+                container.pack(pady=1)
             container.pack_propagate(False)
 
             # 图标标签（关键：cursor也要设为hand2，并绑定点击事件到标签本身）
             if img:
-                icon_label = ctk.CTkLabel(container, image=img, text="", width=26, height=26, cursor="hand2")
+                icon_label = ctk.CTkLabel(container, image=img, text="", width=_icon_sz[0], height=_icon_sz[1], cursor="hand2")
                 icon_label.pack(expand=True)
             else:
                 icon_label = ctk.CTkLabel(container, text="?", cursor="hand2")
@@ -840,10 +1102,61 @@ del "{new_exe_path}" > nul 2>&1
             container._icon_key = icon_key
             container._base_img = img
 
+    def _toggle_sidebar(self):
+        """切换侧边栏折叠/展开状态"""
+        self._sidebar_collapsed = not self._sidebar_collapsed
+
+        if self._sidebar_collapsed:
+            # 收起：隐藏侧边栏和分隔线
+            self.sidebar.pack_forget()
+            self.divider.pack_forget()
+            if hasattr(self, '_title_collapse_btn') and self._fold_icon_collapsed:
+                self._title_collapse_btn.configure(image=self._fold_icon_collapsed)
+        else:
+            # 展开：先忘记 main_area，再按正确顺序重新 pack
+            self.main_area.pack_forget()
+            self.sidebar.pack(side="left", fill="y")
+            self.divider.pack(side="left", fill="y")
+            self.main_area.pack(side="left", fill="both", expand=True,
+                               padx=(12, 12), pady=(12, 12))
+            if hasattr(self, '_title_collapse_btn') and self._fold_icon_expanded:
+                self._title_collapse_btn.configure(image=self._fold_icon_expanded)
+
+        # 保存状态到 settings.txt（兼容 key=value 格式）
+        try:
+            import os
+            _data_dir = os.path.join(os.path.expanduser("~"), "采购管理系统数据")
+            _sp = os.path.join(_data_dir, "settings.txt")
+            _val = "1" if self._sidebar_collapsed else "0"
+
+            _lines = []
+            if os.path.exists(_sp):
+                with open(_sp, "r", encoding="utf-8") as _f:
+                    _lines = _f.readlines()
+
+            _found = False
+            for _i, _line in enumerate(_lines):
+                if _line.strip().startswith("sidebar_collapsed="):
+                    _lines[_i] = f"sidebar_collapsed={_val}\n"
+                    _found = True
+                    break
+
+            if not _found:
+                _lines.append(f"sidebar_collapsed={_val}\n")
+
+            with open(_sp, "w", encoding="utf-8") as _f:
+                _f.writelines(_lines)
+        except Exception:
+            pass
+
     def _switch_page(self, key):
         """切换页面并更新导航栏选中状态（线性图标→实心图标）"""
+        # ── 标题栏始终显示"采购助手"，不随页面变化 ──
+
         # 判断是否为纯图标项
         icon_only_items = {"purchase", "travel", "memo", "settings"}
+        # 小尺寸图标键（垫付/差旅/待办/设置）
+        _small_icon_keys = {"purchase", "travel", "memo", "settings"}
 
         for k, widget in self.nav_buttons.items():
             is_io = getattr(widget, '_is_icon_only', False)
@@ -852,11 +1165,12 @@ del "{new_exe_path}" > nul 2>&1
                 widget.configure(fg_color="transparent")
                 # 切换回线性图标
                 ik = getattr(widget, '_icon_key', k)
+                _isz = (23, 23) if ik in _small_icon_keys else (25, 25)
                 if PIL_AVAILABLE:
                     try:
                         p = NAV_ICON_PATHS.get(ik, "")
                         if os.path.exists(p):
-                            linear_img = ctk.CTkImage(light_image=Image.open(p), size=(26, 26))
+                            linear_img = ctk.CTkImage(light_image=Image.open(p), size=_isz)
                             for child in widget.winfo_children():
                                 if isinstance(child, ctk.CTkLabel):
                                     child.configure(image=linear_img)
@@ -871,7 +1185,7 @@ del "{new_exe_path}" > nul 2>&1
                     try:
                         p = NAV_ICON_PATHS.get(k, "")
                         if os.path.exists(p):
-                            linear_img = ctk.CTkImage(light_image=Image.open(p), size=(22, 22))
+                            linear_img = ctk.CTkImage(light_image=Image.open(p), size=(21, 21))
                     except Exception:
                         pass
                 btn.configure(
@@ -889,11 +1203,12 @@ del "{new_exe_path}" > nul 2>&1
                 # 纯图标项：高亮 + 实心图标
                 widget.configure(fg_color=COLORS["sidebar_active"])
                 ik = getattr(widget, '_icon_key', key)
+                _isz = (23, 23) if ik in _small_icon_keys else (25, 25)
                 if PIL_AVAILABLE:
                     try:
                         ap = NAV_ICON_ACTIVE_PATHS.get(key, "")
                         if os.path.exists(ap):
-                            active_img = ctk.CTkImage(light_image=Image.open(ap), size=(26, 26))
+                            active_img = ctk.CTkImage(light_image=Image.open(ap), size=_isz)
                             for child in widget.winfo_children():
                                 if isinstance(child, ctk.CTkLabel):
                                     child.configure(image=active_img)
@@ -907,7 +1222,7 @@ del "{new_exe_path}" > nul 2>&1
                     try:
                         ap = NAV_ICON_ACTIVE_PATHS.get(key, "")
                         if os.path.exists(ap):
-                            active_img = ctk.CTkImage(light_image=Image.open(ap), size=(22, 22))
+                            active_img = ctk.CTkImage(light_image=Image.open(ap), size=(21, 21))
                     except Exception:
                         pass
                 widget.configure(

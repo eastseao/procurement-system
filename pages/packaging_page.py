@@ -5,7 +5,7 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
 import tkinter as tk
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import re, os, tempfile, shutil, zipfile
 from lxml import etree
 
@@ -61,7 +61,7 @@ class PackagingPage(ctk.CTkFrame):
         self.archive_btn = ctk.CTkButton(
             btn_frame, text="📁 查看归档", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=14), command=self._toggle_archive
+            font=ctk.CTkFont(size=14), command=self._toggle_archive, corner_radius=20
         )
         self.archive_btn.pack(side="right", padx=4)
 
@@ -70,22 +70,22 @@ class PackagingPage(ctk.CTkFrame):
             btn_frame, text="📥 导入xlsx", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=14),
-            command=self._import_xlsx,
+            command=self._import_xlsx, corner_radius=20,
         ).pack(side="right", padx=4)
 
         # ── v1.2 新增：导出xlsx 按钮 ──
         ctk.CTkButton(
-            btn_frame, text="📤 导出xlsx", width=100, height=34,
+            btn_frame, text="📤 导出当前列表", width=120, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(size=14),
-            command=self._export_xlsx,
+            command=self._export_xlsx, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="＋ 新增物料", width=110, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._open_form,
+            command=self._open_form, corner_radius=20,
         ).pack(side="left", padx=4)
 
         # ── 上传合同按钮 (v1.9.2 新增) ──
@@ -93,7 +93,7 @@ class PackagingPage(ctk.CTkFrame):
             btn_frame, text="📄 上传合同", width=120, height=34,
             fg_color="#4A90D6", hover_color="#3A7BC4",
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._upload_contract,
+            command=self._upload_contract, corner_radius=20,
         ).pack(side="left", padx=4)
 
         # ── 筛选栏 ──
@@ -147,7 +147,7 @@ class PackagingPage(ctk.CTkFrame):
             filter_bar, text="✕ 清除筛选", width=90, height=30,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=13),
-            command=self._clear_filters,
+            command=self._clear_filters, corner_radius=20,
         ).pack(side="right", padx=(0, 12), pady=6)
 
         # 统计栏
@@ -239,6 +239,18 @@ class PackagingPage(ctk.CTkFrame):
         self.tree.bind("<Double-1>", self._on_row_double_click)
         self.tree.bind("<Button-1>", self._on_row_click)
 
+        # ── 右键菜单 ──
+        self._context_menu = tk.Menu(self, tearoff=0,
+            bg="#FFFFFF", fg="#4A3728",
+            activebackground="#E8D5C4", activeforeground="#4A3728",
+            font=("Microsoft YaHei", 10),
+        )
+        self._context_menu.add_command(label="📝 编辑", command=self._on_edit_selected)
+        self._context_menu.add_command(label="📋 复制", command=self._on_copy_selected)
+        self._context_menu.add_separator()
+        self._context_menu.add_command(label="🗑️ 删除", command=self._on_delete_selected)
+        self.tree.bind("<Button-3>", self._on_tree_right_click)
+
     # ── 数据加载 ────────────────────────────────────────
     def _load_data(self):
         if self._loading:
@@ -319,6 +331,10 @@ class PackagingPage(ctk.CTkFrame):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+        today_str = date.today().strftime("%Y-%m-%d")
+        tomorrow = date.today() + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime("%Y-%m-%d")
+
         for r in self.records:
             compare_price = r.get("compare_price")
             price_str = f"¥{compare_price:.2f}" if compare_price else "-"
@@ -342,9 +358,17 @@ class PackagingPage(ctk.CTkFrame):
             else:
                 status = "待比价"
 
-            tags = ()
+            tags = []
             if r.get("archived"):
-                tags = ("archived",)
+                tags.append("archived")
+
+            arr_date = r.get("expected_arrival", "")
+            if arr_date == today_str:
+                tags.append("arrival_today")
+            elif arr_date == tomorrow_str:
+                tags.append("arrival_tomorrow")
+
+            tag_tuple = tuple(tags) if tags else ()
 
             self.tree.insert(
                 "", "end", iid=str(r["id"]),
@@ -363,10 +387,12 @@ class PackagingPage(ctk.CTkFrame):
                     status,
                     "删除  归档" if not r.get("archived") else "删除",
                 ),
-                tags=tags,
+                tags=tag_tuple,
             )
 
         self.tree.tag_configure("archived", foreground="#9CA3AF")
+        self.tree.tag_configure("arrival_today", background="#FFF3E0", foreground="#C9A96E")
+        self.tree.tag_configure("arrival_tomorrow", background="#FFF8F0", foreground="#8B5E3C")
 
     # ── 事件处理 ────────────────────────────────────────
     def _on_row_double_click(self, event):
@@ -375,6 +401,56 @@ class PackagingPage(ctk.CTkFrame):
             return
         oid = int(selection[0])
         self._open_form(oid=oid)
+
+    def _on_tree_right_click(self, event):
+        """右键点击表格行→弹出菜单"""
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+            self._context_menu.post(event.x_root, event.y_root)
+
+    def _on_edit_selected(self):
+        """编辑选中行"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        oid = int(selection[0])
+        self._open_form(oid=oid)
+
+    def _on_copy_selected(self):
+        """复制选中行信息到剪贴板"""
+        import tkinter as tk
+        selection = self.tree.selection()
+        if not selection:
+            return
+        oid = int(selection[0])
+        rec = None
+        for r in self.records:
+            if r["id"] == oid:
+                rec = r
+                break
+        if rec:
+            text = f"物料:{rec.get('material_name','')} 厂家:{rec.get('order_factory','')} 数量:{rec.get('order_quantity','')}"
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            try:
+                self.tree.event_generate("<<TreeviewSelect>>")
+            except Exception:
+                pass
+
+    def _on_delete_selected(self):
+        """删除选中行"""
+        selection = self.tree.selection()
+        if not selection:
+            return
+        oid = int(selection[0])
+        rec = None
+        for r in self.records:
+            if r["id"] == oid:
+                rec = r
+                break
+        if rec:
+            self._delete_order(oid, rec)
 
     def _on_row_click(self, event):
         """操作列点击：删除/归档"""
@@ -969,7 +1045,7 @@ class PackagingForm(ctk.CTkToplevel):
             row2, text="＋", width=36, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=16, weight="bold"),
-            command=self._add_project,
+            command=self._add_project, corner_radius=20,
         ).pack(side="left")
 
         # ── 五个环节 ─────────────────────────────────
@@ -987,21 +1063,21 @@ class PackagingForm(ctk.CTkToplevel):
             btn_frame, text="✅ 确认到货并归档", width=150, height=38,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._confirm_arrival,
+            command=self._confirm_arrival, corner_radius=20,
         )
 
         ctk.CTkButton(
             btn_frame, text="💾 保存", width=100, height=38,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._save,
+            command=self._save, corner_radius=20,
         ).pack(side="right", padx=8)
 
         ctk.CTkButton(
             btn_frame, text="取消", width=80, height=38,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=14),
-            command=self.destroy,
+            command=self.destroy, corner_radius=20,
         ).pack(side="right", padx=8)
 
     # ── 环节板块构建辅助 ─────────────────────────────
@@ -1022,7 +1098,7 @@ class PackagingForm(ctk.CTkToplevel):
             header, text="▼" if self._section_visible[section_key] else "▶",
             width=28, height=28, fg_color="transparent",
             text_color=self.C["text"], hover_color=self.C["bg"],
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=13), corner_radius=20,
         )
         toggle_btn.pack(side="left")
 

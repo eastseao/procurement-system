@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """设置页面 - v1.7 - 左右分栏布局"""
 
@@ -167,6 +167,7 @@ SETTING_CATEGORIES = [
     ("数据管理", "💾"),
     ("启动设置", "🚀"),
     ("系统设置", "⚙️"),
+    ("数据备份", "💾"),
     ("软件介绍", "ℹ️"),
     ("关于作者", "✍️"),
 ]
@@ -208,11 +209,6 @@ class SettingsPage(ctk.CTkFrame):
         left_nav.pack(side="left", fill="y", padx=(24, 0), pady=16)
         left_nav.pack_propagate(False)
 
-        ctk.CTkLabel(
-            left_nav, text="设置分类",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
-            text_color=self.C["text"],
-        ).pack(anchor="w", padx=16, pady=(16, 12))
 
         self._nav_buttons = {}
         for cat_name, cat_icon in SETTING_CATEGORIES:
@@ -225,11 +221,16 @@ class SettingsPage(ctk.CTkFrame):
                 hover_color=self.C["sidebar_hover"],
                 anchor="w",
                 height=40,
-                corner_radius=8,
+                corner_radius=20,
                 command=lambda c=cat_name: self._show_category(c),
             )
             btn.pack(fill="x", padx=8, pady=2)
             self._nav_buttons[cat_name] = btn
+
+        # 分隔线
+        separator = tk.Frame(content, width=1, bg="#E0D6CC")
+        separator.pack(side="left", fill="y")
+
 
         # 右侧内容区
         self._right_content = ctk.CTkScrollableFrame(content, fg_color="transparent")
@@ -259,6 +260,8 @@ class SettingsPage(ctk.CTkFrame):
             self._build_startup()
         elif category == "系统设置":
             self._build_system()
+        elif category == "数据备份":
+            self._build_data_backup()
         elif category == "软件介绍":
             self._build_version_info()
         elif category == "关于作者":
@@ -360,7 +363,7 @@ class SettingsPage(ctk.CTkFrame):
             path_frame, text="浏览...", width=80, height=32,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(size=14),
-            command=self._browse_data_dir,
+            command=self._browse_data_dir, corner_radius=20,
         ).pack(side="right")
 
         btn_row = ctk.CTkFrame(card, fg_color="transparent")
@@ -369,7 +372,7 @@ class SettingsPage(ctk.CTkFrame):
             btn_row, text="打开目录",
             fg_color="transparent", text_color=self.C["primary"],
             font=ctk.CTkFont(size=13),
-            command=self._open_data_dir,
+            command=self._open_data_dir, corner_radius=20,
         ).pack(side="left")
         ctk.CTkLabel(
             btn_row,
@@ -427,8 +430,221 @@ class SettingsPage(ctk.CTkFrame):
                      font=ctk.CTkFont(family="Microsoft YaHei", size=12),
                      text_color=self.C["text_secondary"]).pack(anchor="w", padx=42, pady=(0, 16))
 
+        # ── 核心指标选择 ──
+        ctk.CTkLabel(card, text="看板核心指标",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
+                     text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(16, 8))
+
+        ctk.CTkLabel(card,
+                     text="选择在看板页面显示的核心指标卡片（勾选后需刷新看板生效）",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                     text_color=self.C["text_secondary"]).pack(anchor="w", padx=20, pady=(0, 8))
+
+        # KPI 卡片选项
+        self.kpi_check_vars = {}
+        kpi_options = [
+            ("packaging", "物料下单（处理中/已完成）"),
+            ("collection", "催款记录（总条数）"),
+            ("purchase", "采购垫付（总笔数/待报销）"),
+            ("travel", "差旅报销（行程数/待报销）"),
+            ("contract_pending", "待签合同数"),
+            ("compare_month", "本月比价次数"),
+        ]
+        default_kpis = [k.strip() for k in self.settings.get("kpi_cards", "packaging,collection,purchase,travel").split(",")]
+        for key, label in kpi_options:
+            var = tk.IntVar(value=1 if key in default_kpis else 0)
+            self.kpi_check_vars[key] = var
+            cb = ctk.CTkCheckBox(
+                card, text=label, variable=var,
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                checkbox_width=18, checkbox_height=18,
+                fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
+            )
+            cb.pack(anchor="w", padx=28, pady=2)
+
+        # ── 快捷键说明 ──
+        ctk.CTkLabel(card, text="全局快捷键",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
+                     text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(16, 8))
+
+        hotkeys = [
+            ("F11", "切换全屏模式 / Esc 退出全屏"),
+            ("Ctrl + S", "保存当前页面数据"),
+            ("Ctrl + F", "聚焦搜索框"),
+            ("Ctrl + E", "导出当前列表数据"),
+        ]
+        for key, desc in hotkeys:
+            row = ctk.CTkFrame(card, fg_color="transparent")
+            row.pack(fill="x", padx=28, pady=2)
+            key_label = ctk.CTkLabel(
+                row, text=key, width=80,
+                font=ctk.CTkFont(family="Consolas", size=13, weight="bold"),
+                text_color=self.C["primary"],
+                anchor="center",
+            )
+            key_label.pack(side="left")
+            ctk.CTkLabel(
+                row, text=desc,
+                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                text_color=self.C["text_secondary"],
+            ).pack(side="left", padx=(8, 0))
+
         # 保存按钮
         self._add_save_button()
+
+    def _build_data_backup(self):
+        """构建数据备份与恢复内容"""
+        card = ctk.CTkFrame(self._right_content, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        card.pack(fill="x", pady=(0, 12))
+
+        ctk.CTkLabel(card, text="数据备份",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
+                     text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(16, 8))
+
+        ctk.CTkLabel(card,
+                     text="将整个数据库打包为 ZIP 文件，可在需要时恢复",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                     text_color=self.C["text_secondary"]).pack(anchor="w", padx=20, pady=(0, 12))
+
+        # 备份按钮行
+        btn_row = ctk.CTkFrame(card, fg_color="transparent")
+        btn_row.pack(fill="x", padx=20, pady=(0, 8))
+
+        ctk.CTkButton(
+            btn_row, text="📦 备份数据", width=140, height=36,
+            fg_color=self.C["success"], hover_color="#7A9A6E",
+            font=ctk.CTkFont(size=14),
+            command=self._backup_database, corner_radius=20,
+        ).pack(side="left", padx=(0, 10))
+
+        ctk.CTkButton(
+            btn_row, text="📂 恢复数据", width=140, height=36,
+            fg_color="#B56A6A", hover_color="#A05858",
+            font=ctk.CTkFont(size=14),
+            command=self._restore_database, corner_radius=20,
+        ).pack(side="left")
+
+        # 备份状态标签
+        self.backup_status_label = ctk.CTkLabel(
+            card, text="",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            text_color=self.C["text_secondary"],
+        )
+        self.backup_status_label.pack(anchor="w", padx=20, pady=(8, 4))
+
+        # ── 恢复默认设置 ──
+        sep = tk.Frame(card, height=1, bg=self.C["divider"])
+        sep.pack(fill="x", padx=20, pady=(16, 12))
+
+        ctk.CTkLabel(card, text="重置为默认设置",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
+                     text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(0, 8))
+
+        ctk.CTkLabel(card,
+                     text="将窗口大小、筛选条件、表列宽等恢复到初始状态",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                     text_color=self.C["text_secondary"]).pack(anchor="w", padx=20, pady=(0, 12))
+
+        ctk.CTkButton(
+            card, text="🔄 恢复默认设置", width=160, height=34,
+            fg_color="#C9A96E", hover_color="#B8985E",
+            font=ctk.CTkFont(size=13),
+            command=self._reset_to_defaults, corner_radius=20,
+        ).pack(anchor="w", padx=28)
+
+        # 保存按钮
+        self._add_save_button()
+
+    def _backup_database(self):
+        """备份数据库到用户选择的目录"""
+        import shutil
+        from datetime import datetime as dt
+        db_path = os.path.join(self.settings.get("data_dir", ""), "procurement.db")
+        if not os.path.exists(db_path):
+            default_dir = os.path.join(os.path.expanduser("~"), "采购管理系统数据")
+            db_path = os.path.join(default_dir, "procurement.db")
+
+        if not os.path.exists(db_path):
+            messagebox.showerror("错误", "未找到数据库文件")
+            return
+
+        save_dir = filedialog.askdirectory(title="选择备份保存位置")
+        if not save_dir:
+            return
+
+        timestamp = dt.now().strftime("%Y%m%d_%H%M%S")
+        zip_name = f"采购助手备份_{timestamp}.zip"
+        zip_path = os.path.join(save_dir, zip_name)
+
+        try:
+            import zipfile
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                zf.write(db_path, "procurement.db")
+            size_mb = os.path.getsize(zip_path) / (1024 * 1024)
+            self.backup_status_label.configure(text=f"✅ 备份成功：{zip_name} ({size_mb:.1f}MB)")
+            messagebox.showinfo("备份成功", f"数据库已备份到:\n{zip_path}")
+        except Exception as e:
+            messagebox.showerror("备份失败", f"备份数据库失败：\n{e}")
+            self.backup_status_label.configure(text=f"❌ 备份失败：{e}")
+
+    def _restore_database(self):
+        """从备份恢复数据库"""
+        filetypes=[("ZIP 压缩包", "*.zip"), ("数据库文件", "*.db *.sqlite"), ("所有文件", "*.*")]
+        restore_path = filedialog.askopenfilename(title="选择备份文件", filetypes=filetypes)
+        if not restore_path:
+            return
+
+        if not messagebox.askyesno("确认恢复",
+            "恢复数据将覆盖当前数据库！\n\n建议先手动备份当前数据库。\n\n是否继续？"):
+            return
+
+        db_path = os.path.join(self.settings.get("data_dir", ""), "procurement.db")
+        if not os.path.exists(db_path):
+            default_dir = os.path.join(os.path.expanduser("~"), "采购管理系统数据")
+            db_path = os.path.join(default_dir, "procurement.db")
+
+        try:
+            import zipfile
+            if restore_path.endswith(".zip"):
+                # 从 ZIP 提取
+                with zipfile.ZipFile(restore_path, 'r') as zf:
+                    names = zf.namelist()
+                    if "procurement.db" in names:
+                        zf.extract("procurement.db", os.path.dirname(db_path))
+                    else:
+                        # 取第一个 .db 文件
+                        db_files = [n for n in names if n.endswith(".db")]
+                        if db_files:
+                            zf.extract(db_files[0], os.path.dirname(db_path))
+                            import shutil
+                            extracted = os.path.join(os.path.dirname(db_path), db_files[0])
+                            shutil.copy2(extracted, db_path)
+            else:
+                # 直接复制 DB 文件
+                import shutil
+                shutil.copy2(restore_path, db_path)
+
+            messagebox.showinfo("恢复成功", "数据库恢复成功！\n\n请重启软件以加载新数据。")
+            self.backup_status_label.configure(text="✅ 数据库恢复成功，请重启软件")
+        except Exception as e:
+            messagebox.showerror("恢复失败", f"恢复数据库失败：\n{e}")
+
+    def _reset_to_defaults(self):
+        """恢复默认设置"""
+        if not messagebox.askyesno("确认重置",
+            "将恢复以下设置为默认值：\n\n• 窗口大小和位置\n• 表格列宽\n• 筛选条件\n\n是否继续？"):
+            return
+
+        try:
+            # 清除窗口位置/大小相关设置
+            for key in ["window_width", "window_height", "window_x", "window_y"]:
+                self.settings.pop(key, None)
+
+            # 保存
+            save_settings(self.settings)
+            messagebox.showinfo("重置成功", "已恢复默认设置！\n\n请重启软件生效。")
+        except Exception as e:
+            messagebox.showerror("重置失败", f"重置失败：{e}")
 
     def _build_version_info(self):
         """构建软件介绍内容"""
@@ -471,7 +687,7 @@ class SettingsPage(ctk.CTkFrame):
             width=240, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
-            corner_radius=6,
+            corner_radius=20,
             command=lambda: webbrowser.open(GITHUB_RELEASES_URL),
         )
         release_btn.pack(side="left", padx=(0, 10))
@@ -481,7 +697,7 @@ class SettingsPage(ctk.CTkFrame):
             width=110, height=34,
             fg_color="#6B8FA3", hover_color="#5A7A93",
             font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
-            corner_radius=6,
+            corner_radius=20,
             command=self._on_check_update,
         )
         check_update_btn.pack(side="left")
@@ -656,17 +872,16 @@ class SettingsPage(ctk.CTkFrame):
                 avatar_label.pack()
             except Exception:
                 pass
-        
-        # 右侧：作者信息（垂直居中于头像高度）
+
+        # 右侧：作者信息
         info_frame = ctk.CTkFrame(info_container, fg_color="transparent")
         info_frame.pack(side="left", fill="both", expand=True)
-        
-        # 计算需要的上边距使信息垂直居中（头像200px，信息约100px，所以上边距约50px）
+
         spacer = ctk.CTkFrame(info_frame, fg_color="transparent", height=50)
         spacer.pack()
-        
+
         author_lines = [
-            ("👤", "作者", "EastSeaO"),
+            ("👤", "作者", "王维（微信：EastSeaO）"),
             ("🏢", "就职", "北京同仁堂健康药业（青海）有限公司"),
             ("💼", "部门", "采购部 · 包装采购业务"),
         ]
@@ -691,6 +906,52 @@ class SettingsPage(ctk.CTkFrame):
         # ── 分隔线 ──────────────────────────
         sep2 = tk.Frame(card, height=1, bg=self.C["divider"])
         sep2.pack(fill="x", padx=20, pady=(16, 12))
+
+        # ── 作者自述（来自 author2.0.md）────────────────────────
+        ctk.CTkLabel(
+            card, text="作者自述",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(anchor="w", padx=20, pady=(0, 8))
+
+        author_intro = (
+            "作为一线采购从业者，作者在日常工作中发现传统手工台账、分散的 Excel 文件\n"
+            "难以满足采购全流程的跟踪与管理需求。因此，利用业余时间独立自主开发了\n"
+            '"采购助手"桌面端管理系统，覆盖物料下单、报价比价、合同生成、垫付报销、\n'
+            "催款台账等核心业务环节。"
+        )
+        ctk.CTkLabel(
+            card, text=author_intro,
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            text_color=self.C["text_secondary"],
+            justify="left", anchor="w",
+        ).pack(fill="x", padx=24, pady=(0, 8))
+
+        author_usage = (
+            "本系统已在同仁堂健康药业（青海）采购部实际运行使用，并持续迭代优化。\n"
+            "如果你对系统功能有任何建议，或者希望合作开发更多定制化功能，\n"
+            '欢迎通过微信 EastSeaO 与作者交流。'
+        )
+        ctk.CTkLabel(
+            card, text=author_usage,
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            text_color=self.C["text_secondary"],
+            justify="left", anchor="w",
+        ).pack(fill="x", padx=24, pady=(0, 12))
+
+        # ── 座右铭 ──────────────────────────
+        quote_frame = ctk.CTkFrame(card, fg_color=self.C["primary_light"], corner_radius=8)
+        quote_frame.pack(fill="x", padx=20, pady=(0, 12))
+
+        ctk.CTkLabel(
+            quote_frame, text='"用代码解决重复劳动，用数据提升采购效率。"',
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold", slant="italic"),
+            text_color=self.C["primary"],
+        ).pack(anchor="w", padx=16, pady=(12, 12))
+
+        # ── 分隔线 ──────────────────────────
+        sep3 = tk.Frame(card, height=1, bg=self.C["divider"])
+        sep3.pack(fill="x", padx=20, pady=(12, 8))
 
         # ── 联系方式 ──────────────────────────
         ctk.CTkLabel(
@@ -719,12 +980,12 @@ class SettingsPage(ctk.CTkFrame):
                     size=(150, 150))
                 wx_frame = ctk.CTkFrame(card, fg_color="transparent")
                 wx_frame.pack(anchor="w", padx=24, pady=(10, 16))
-                
+
                 wx_label = ctk.CTkLabel(
                     wx_frame, image=wx_img, text="")
                 wx_label.image = wx_img  # 保持引用
                 wx_label.pack(anchor="w")
-                
+
                 ctk.CTkLabel(
                     wx_frame, text="微信扫码添加作者",
                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
@@ -748,7 +1009,7 @@ class SettingsPage(ctk.CTkFrame):
             width=280, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
-            corner_radius=6,
+            corner_radius=20,
             command=lambda: webbrowser.open(GITHUB_RELEASES_URL.replace("/releases", "")),
         )
         repo_btn.pack(anchor="w", padx=14, pady=(4, 10))
@@ -764,7 +1025,7 @@ class SettingsPage(ctk.CTkFrame):
             btn_frame, text="✓ 保存设置", width=140, height=40,
             fg_color=self.C["success"], hover_color="#7A9472",
             font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
-            command=self._save_all,
+            command=self._save_all, corner_radius=20,
         ).pack(side="left", padx=4)
 
     def _browse_data_dir(self):
@@ -814,6 +1075,10 @@ class SettingsPage(ctk.CTkFrame):
         self.settings["theme"] = self.theme_mode_var.get()
         self.settings["auto_start"] = "1" if self.auto_start_var.get() == 1 else "0"
         self.settings["tray_enabled"] = "1" if self.tray_enabled_var.get() == 1 else "0"
+
+        # 保存 KPI 指标选择
+        selected_kpis = [k for k, v in self.kpi_check_vars.items() if v.get() == 1]
+        self.settings["kpi_cards"] = ",".join(selected_kpis) if selected_kpis else "packaging,collection,purchase,travel"
 
         # 数据库迁移
         if old_data_dir != new_data_dir:

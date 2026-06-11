@@ -4,8 +4,10 @@
 
 import customtkinter as ctk
 import tkinter as tk
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import calendar
+import configparser
+import os
 
 # 各模块莫兰迪色
 MODULE_COLORS = {
@@ -17,12 +19,47 @@ MODULE_COLORS = {
     "quotation":  "#9B8AAE",   # 淡紫 - 报价单
     "compare":    "#C4A35A",   # 琥珀 - 三方比价
     "contract":   "#6B9080",   # 青绿 - 合同
+    "arrival":    "#D4A76A",   # 金麦色 - 到货提醒
 }
 
 # 趋势箭头配色
 TREND_UP_COLOR   = "#8FA882"   # 绿色 - 上升
 TREND_DOWN_COLOR = "#B56A6A"   # 红色 - 下降
 TREND_NEUTRAL    = "#B0A8A0"   # 灰色 - 持平
+
+# 可配置的 KPI 卡片预设列表
+AVAILABLE_KPI_CARDS = {
+    "packaging": {
+        "title": "物料下单",
+        "keys": [("处理中", "packaging_active"), ("已完成", "packaging_done")],
+        "color": "#C1816D", "page_key": "packaging"
+    },
+    "collection": {
+        "title": "催款记录",
+        "keys": [(None, "collection_total")],
+        "color": "#8FA882", "page_key": "collection"
+    },
+    "purchase": {
+        "title": "采购垫付",
+        "keys": [("总笔数", "purchase_total"), ("待报销", "purchase_pending")],
+        "color": "#C9A96E", "page_key": "purchase"
+    },
+    "travel": {
+        "title": "差旅报销",
+        "keys": [("行程数", "travel_total"), ("待报销", "travel_pending")],
+        "color": "#B56A6A", "page_key": "travel"
+    },
+    "contract_pending": {
+        "title": "待签合同",
+        "keys": [(None, "contract_pending")],
+        "color": "#6B9080", "page_key": "packaging"
+    },
+    "compare_month": {
+        "title": "本月比价",
+        "keys": [(None, "compare_month")],
+        "color": "#C4A35A", "page_key": "compare"
+    },
+}
 
 
 from ui_utils import WheelScrollFrame
@@ -42,6 +79,7 @@ class DashboardPage(ctk.CTkFrame):
         self._progress_bars = {}   # key -> progress bar widget
         self._card_refs = {}      # key -> card frame (for hover effect)
         self._build_ui()
+        self.update_idletasks()  # 确保 UI 完全渲染后再加载数据
         self._load_data()
         # 每5分钟自动刷新
         self._auto_refresh()
@@ -50,17 +88,30 @@ class DashboardPage(ctk.CTkFrame):
     # UI 构建
     # ──────────────────────────────────────────────
     def _build_ui(self):
-        # 主滚动容器
-        scroll_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        scroll_frame.pack(fill="both", expand=True)
-        self._scroll_frame = scroll_frame
+        # 主容器（无滚动条，固定布局）
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True)
 
-        # ── 待办聚合条 ─────────────────────────────────
-        self._build_todo_bar(scroll_frame)
+        # ── 顶部：看板总览标题栏 ──
+        header_bar = ctk.CTkFrame(main_frame, fg_color="transparent")
+        header_bar.pack(fill="x", padx=24, pady=(16, 0))
 
-        # ── 下方两列布局：左侧最新活动 + 右侧核心指标 ──
-        bottom_row = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-        bottom_row.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+        ctk.CTkLabel(
+            header_bar, text="看板总览",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(side="left")
+
+        self.time_label = ctk.CTkLabel(
+            header_bar, text="",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            text_color=self.C["text_secondary"],
+        )
+        self.time_label.pack(side="right", padx=(0, 8))
+
+        # ── 下方两列布局：左侧最新动态 + 右侧核心指标（顶部对齐）──
+        bottom_row = ctk.CTkFrame(main_frame, fg_color="transparent")
+        bottom_row.pack(fill="both", expand=True, padx=24, pady=(16, 16))
 
         # 右侧列：核心指标（2×2网格，每个圆角矩形）
         right_col = ctk.CTkFrame(bottom_row, fg_color="transparent")
@@ -76,41 +127,124 @@ class DashboardPage(ctk.CTkFrame):
         kpi_grid = ctk.CTkFrame(right_col, fg_color="transparent")
         kpi_grid.pack(fill="both", expand=True)
 
-        # 第一行
-        row1 = ctk.CTkFrame(kpi_grid, fg_color="transparent")
-        row1.pack(fill="x", pady=(0, 6))
-        self._make_kpi_card(row1, title="物料下单",
-            keys=[("处理中", "packaging_active"), ("已完成", "packaging_done")],
-            color=MODULE_COLORS["packaging"], page_key="packaging")
-        self._make_kpi_card(row1, title="催款记录",
-            keys=[(None, "collection_total")],
-            color=MODULE_COLORS["collection"], page_key="collection")
+        # ── 从 settings 读取用户选择的 KPI 卡片 ──
+        _settings_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "settings.txt")
+        # 尝试从标准数据目录读取
+        _data_dir = os.path.join(os.path.expanduser("~"), "采购管理系统数据")
+        _std_settings_path = os.path.join(_data_dir, "settings.txt")
+        _config = configparser.ConfigParser()
+        # 先读标准目录的设置（兼容 key=value 格式和 INI 格式）
+        if os.path.exists(_std_settings_path):
+            try:
+                _config.read(_std_settings_path, encoding="utf-8")
+            except (configparser.MissingSectionHeaderError, Exception):
+                pass  # 文件是 key=value 格式，非 INI 格式，忽略
+        elif os.path.exists(_settings_path):
+            try:
+                _config.read(_settings_path, encoding="utf-8")
+            except (configparser.MissingSectionHeaderError, Exception):
+                pass
+        _default_kpis = "packaging,collection,purchase,travel"
+        try:
+            _selected_kpis = _config.get("General", "kpi_cards") if "General" in _config else _default_kpis
+        except Exception:
+            _selected_kpis = _default_kpis
+        # 也尝试从 key=value 格式读取
+        if _selected_kpis == _default_kpis:
+            for _try_path in [_std_settings_path, _settings_path]:
+                if not os.path.exists(_try_path):
+                    continue
+                try:
+                    with open(_try_path, "r", encoding="utf-8") as _f:
+                        for _line in _f:
+                            _line = _line.strip()
+                            if _line.startswith("kpi_cards="):
+                                _selected_kpis = _line.split("=", 1)[1].strip()
+                                break
+                except Exception:
+                    pass
+                if _selected_kpis != _default_kpis:
+                    break
+        self._selected_kpi_keys = [k.strip() for k in _selected_kpis.split(",") if k.strip()]
 
-        # 第二行
-        row2 = ctk.CTkFrame(kpi_grid, fg_color="transparent")
-        row2.pack(fill="x", pady=(0, 6))
-        self._make_kpi_card(row2, title="采购垫付",
-            keys=[("总笔数", "purchase_total"), ("待报销", "purchase_pending")],
-            color=MODULE_COLORS["purchase"], page_key="purchase")
-        self._make_kpi_card(row2, title="差旅报销",
-            keys=[("行程数", "travel_total"), ("待报销", "travel_pending")],
-            color=MODULE_COLORS["travel"], page_key="travel")
+        # ── 动态构建选中的 KPI 卡片（2列网格）──
+        self._kpi_grid = kpi_grid  # 保存引用，供刷新时重建
+        row = None
+        for i, kpi_key in enumerate(self._selected_kpi_keys):
+            if kpi_key not in AVAILABLE_KPI_CARDS:
+                continue
+            if i % 2 == 0:
+                row = ctk.CTkFrame(kpi_grid, fg_color="transparent")
+                row.pack(fill="x", pady=(0, 6))
+            kpi_cfg = AVAILABLE_KPI_CARDS[kpi_key]
+            self._make_kpi_card(row, title=kpi_cfg["title"],
+                keys=kpi_cfg["keys"], color=kpi_cfg["color"], page_key=kpi_cfg["page_key"])
 
-        # 左侧列：最新活动（高度扩大，显示30条）
+        # 左侧列：最新动态（不固定高度，与右侧核心指标顶部对齐）
         left_col = ctk.CTkFrame(bottom_row, fg_color=self.C["card"],
             corner_radius=self.C["radius_card"],
-            border_width=1, border_color=self.C["border"],
-            width=560)
-        left_col.pack(side="left", fill="both")
-        left_col.pack_propagate(False)
+            border_width=1, border_color=self.C["border"])
+        left_col.pack(side="left", fill="both", expand=True)
+
+        # 标题行：最新动态 + 刷新按钮
+        title_row = ctk.CTkFrame(left_col, fg_color="transparent")
+        title_row.pack(fill="x", padx=16, pady=(12, 6))
 
         ctk.CTkLabel(
-            left_col, text="最新活动",
+            title_row, text="最新动态",
             font=ctk.CTkFont(size=17, weight="bold"),
             text_color=self.C["text"],
-        ).pack(anchor="w", padx=16, pady=(12, 6))
+        ).pack(side="left")
 
-        self.activity_frame = ctk.CTkScrollableFrame(
+        # ── 刷新胶囊按钮 ──
+        refresh_btn = ctk.CTkButton(
+            title_row, text="🔄 刷新", width=60, height=26,
+            font=ctk.CTkFont(size=11),
+            fg_color="transparent",
+            text_color=self.C["text_secondary"],
+            hover_color="#E8D5C4",
+            corner_radius=20, border_width=1,
+            border_color="#E8D5C4",
+            command=self._manual_refresh,
+        )
+        refresh_btn.pack(side="right", padx=(4, 0))
+
+        # ── 类型筛选胶囊按钮（无滚动条）──
+        filter_frame = ctk.CTkFrame(left_col, fg_color="transparent", height=36)
+        filter_frame.pack(fill="x", padx=8, pady=(0, 4))
+        filter_frame.pack_propagate(False)
+        self._filter_frame = filter_frame
+
+        self._activity_type_filter = "all"  # 当前筛选类型（默认值，显示全部）
+        filter_types = [
+            ("全部", "all"),
+            ("报价单", "quotation"),
+            ("三方比价", "compare"),
+            ("物料下单", "packaging"),
+            ("合同", "contract"),
+            ("催款", "collection"),
+            ("垫付", "purchase"),
+            ("出差", "travel"),
+            ("备忘录", "memo"),
+            ("到货提醒", "arrival"),
+        ]
+        self._filter_buttons = {}
+        for label, key in filter_types:
+            btn = ctk.CTkButton(
+                filter_frame, text=label, width=64, height=26,
+                font=ctk.CTkFont(size=11),
+                fg_color="#E8D5C4" if key == "all" else "transparent",
+                text_color="#8B5E3C" if key == "all" else self.C["text_secondary"],
+                hover_color="#E8D5C4",
+                corner_radius=20, border_width=1,
+                border_color="#E8D5C4",
+                command=lambda k=key, l=label: self._on_filter_click(k, l),
+            )
+            btn.pack(side="left", padx=(0, 4))
+            self._filter_buttons[key] = btn
+
+        # ── 最新动态列表（使用 WheelScrollFrame 隐藏滚动条）──
+        self.activity_frame = WheelScrollFrame(
             left_col, fg_color="transparent",
         )
         self.activity_frame.pack(fill="both", expand=True, padx=8, pady=(0, 8))
@@ -131,7 +265,7 @@ class DashboardPage(ctk.CTkFrame):
         # 整卡可点击
         btn = ctk.CTkButton(
             card, text="", fg_color="transparent",
-            hover=False, corner_radius=18,
+            hover=False, corner_radius=20,
             command=lambda k=page_key: self._on_card_click(k),
         )
         btn.place(x=0, y=0, relwidth=1, relheight=1)
@@ -215,83 +349,6 @@ class DashboardPage(ctk.CTkFrame):
         self._progress_bars[progress_key] = progress_bar
         self._card_refs[page_key] = card
 
-    # ── 待办聚合条 ──────────────────────────────────
-    def _build_todo_bar(self, parent):
-        """构建待办聚合条（P1 优化：可折叠 + 胶囊按钮）"""
-        # 主容器
-        self.todo_bar = ctk.CTkFrame(
-            parent,
-            fg_color="#FFF8F0",
-            corner_radius=self.C["radius_card"],
-            border_width=1,
-            border_color="#C9A96E",
-        )
-        self.todo_bar.pack(fill="x", padx=24, pady=(0, 12))
-
-        # 可点击的横幅（显示待办数量）
-        self.todo_banner = ctk.CTkFrame(
-            self.todo_bar,
-            fg_color="transparent",
-            cursor="hand2",
-        )
-        self.todo_banner.pack(fill="x", padx=16, pady=(10, 10))
-        self.todo_banner.bind("<Button-1>", lambda e: self._toggle_todo_detail())
-
-        # 左侧图标 + 文本
-        banner_inner = ctk.CTkFrame(self.todo_banner, fg_color="transparent")
-        banner_inner.pack(side="left", fill="x", expand=True)
-
-        self.todo_icon_label = ctk.CTkLabel(
-            banner_inner, text="📋", font=ctk.CTkFont(size=17),
-        )
-        self.todo_icon_label.pack(side="left", padx=(0, 8))
-
-        self.todo_banner_label = ctk.CTkLabel(
-            banner_inner,
-            text="正在加载待办事项...",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
-            text_color=self.C["text"],
-        )
-        self.todo_banner_label.pack(side="left")
-
-        # 右侧展开/折叠指示器
-        self.todo_arrow_label = ctk.CTkLabel(
-            self.todo_banner, text="▼", font=ctk.CTkFont(size=13),
-            text_color=self.C["text_secondary"],
-        )
-        self.todo_arrow_label.pack(side="right")
-
-        # 可折叠的详情区域（默认隐藏）
-        self.todo_detail_frame = ctk.CTkFrame(
-            self.todo_bar,
-            fg_color="transparent",
-        )
-        # 不打包，默认隐藏
-
-        # 待办列表容器
-        self.todo_list_frame = ctk.CTkFrame(
-            self.todo_detail_frame,
-            fg_color="transparent",
-        )
-        self.todo_list_frame.pack(fill="x", padx=16, pady=(0, 10))
-
-        # "前往处理"胶囊按钮
-        self.todo_action_btn = ctk.CTkButton(
-            self.todo_detail_frame,
-            text="前往处理 ▶",
-            width=120, height=32,
-            fg_color=MODULE_COLORS["packaging"],
-            hover_color="#A06050",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
-            corner_radius=16,  # 胶囊形状
-            command=self._on_todo_click,
-        )
-        self.todo_action_btn.pack(side="right", padx=16, pady=(0, 10))
-
-        # 折叠状态
-        self._todo_collapsed = True
-
-    # ── 卡片悬停效果 ──────────────────────────────────
     def _on_card_hover_enter(self, card):
         """卡片悬停进入：增加边框高亮效果"""
         try:
@@ -446,9 +503,30 @@ class DashboardPage(ctk.CTkFrame):
             reimburse_rate = reimbursed_cnt / total_cnt if total_cnt > 0 else 0
             self._update_progress_bar("travel", reimburse_rate)
 
-            # 待办聚合条（仅查询数据库，不生成KPI卡片）
-            memos = self.db.get_memos(status="待处理")
-            self._update_todo_bar(packaging_active, collections, memos)
+            # 待签合同数（新增）
+            try:
+                cur = self.db.conn.cursor()
+                cur.execute("SELECT COUNT(*) FROM packaging_orders WHERE contract_status NOT IN ('已签', '已完成', '') OR contract_status IS NULL")
+                pending_contract_cnt = cur.fetchone()[0]
+                self._set_value("contract_pending", str(pending_contract_cnt))
+                self._set_value("contract_pending_unit", "个合同")
+            except Exception:
+                self._set_value("contract_pending", "—")
+
+            # 本月比价次数（新增）
+            try:
+                today = date.today()
+                month_start = today.replace(day=1).strftime("%Y-%m-%d")
+                month_end = f"{today.strftime('%Y-%m-%d')} 23:59:59"
+                cur = self.db.conn.cursor()
+                cur.execute("SELECT COUNT(*) FROM third_party_records WHERE created_at >= ? AND created_at <= ?", (month_start, month_end))
+                compare_cnt = cur.fetchone()[0]
+                self._set_value("compare_month", str(compare_cnt))
+                self._set_value("compare_month_unit", "次比价")
+            except Exception:
+                self._set_value("compare_month", "—")
+
+            # 最新动态
             self._update_activity_feed()
 
         except Exception as e:
@@ -555,69 +633,23 @@ class DashboardPage(ctk.CTkFrame):
             print(f"6个月趋势数据获取失败({table_name}): {e}")
             return []
 
-    def _toggle_todo_detail(self):
-        """切换待办详情的展开/折叠状态"""
-        if self._todo_collapsed:
-            # 展开
-            self.todo_detail_frame.pack(fill="x", padx=0, pady=(0, 0), after=self.todo_banner)
-            self.todo_arrow_label.configure(text="▲")
-            self._todo_collapsed = False
-        else:
-            # 折叠
-            self.todo_detail_frame.pack_forget()
-            self.todo_arrow_label.configure(text="▼")
-            self._todo_collapsed = True
-
-    def _update_todo_bar(self, packaging_active, collections, memos):
-        """更新待办聚合条（P1 优化：可折叠 + 紧急程度色块）"""
-        todo_details = []
-
-        # 物料下单：待签批
-        pending_contracts = [r for r in packaging_active
-                             if r.get("contract_status") in ("待签批", "", None)]
-        if pending_contracts:
-            todo_details.append({
-                "icon": "📦",
-                "text": f"{len(pending_contracts)} 份合同待签批",
-                "priority": "red",  # 紧急
-                "page": "packaging",
-            })
-
-        # 催款记录：未结清
-        unpaid = [c for c in collections if c.get("status") not in ("已结清", "已完成")]
-        if unpaid:
-            todo_details.append({
-                "icon": "💰",
-                "text": f"{len(unpaid)} 笔催款待跟进",
-                "priority": "orange",  # 中等
-                "page": "collection",
-            })
-
-        # 备忘录：待处理
-        if len(memos) > 0:
-            todo_details.append({
-                "icon": "📝",
-                "text": f"{len(memos)} 条备忘录待处理",
-                "priority": "blue",  # 一般
-                "page": "memo",
-            })
-
-        # 更新横幅文本
-        if todo_details:
-            todo_count = len(todo_details)
-            self.todo_banner_label.configure(text=f"📋 你有 {todo_count} 项待办")
-            self.todo_bar.configure(fg_color="#FFF4E6", border_color="#E4A36A")
-        else:
-            self.todo_banner_label.configure(text="✅ 所有事项已处理完毕")
-            self.todo_bar.configure(fg_color="#F0F8F0", border_color="#C9A96E")
-
-        # 更新详情列表
-        self._update_todo_list(todo_details)
+    def _on_filter_click(self, key, label):
+        """点击类型筛选胶囊按钮"""
+        self._activity_type_filter = key
+        # 更新按钮样式
+        for k, btn in self._filter_buttons.items():
+            is_active = (k == key)
+            btn.configure(
+                fg_color="#E8D5C4" if is_active else "transparent",
+                text_color="#8B5E3C" if is_active else self.C["text_secondary"],
+            )
+        # 重新加载动态
+        self._update_activity_feed()
 
     def _update_activity_feed(self):
         """更新最近活动动态流（30条，含报价/比价/下单/合同/催款/垫付/出差）"""
-        # 清空旧内容
-        for widget in self.activity_frame.winfo_children():
+        # 清空旧内容（只销毁 _inner 内的部件，保留 canvas/scrollbar）
+        for widget in self.activity_frame._inner.winfo_children():
             widget.destroy()
 
         try:
@@ -732,20 +764,52 @@ class DashboardPage(ctk.CTkFrame):
             except Exception:
                 pass
 
+            # 8️⃣ 到货提醒（预计到达日为今天或明天）
+            try:
+                cur = self.db.conn.cursor()
+                today_str = date.today().strftime("%Y-%m-%d")
+                tomorrow = date.today() + timedelta(days=1)
+                tomorrow_str = tomorrow.strftime("%Y-%m-%d")
+                cur.execute(
+                    "SELECT id, material_name, expected_arrival, order_factory "
+                    "FROM packaging_orders "
+                    "WHERE expected_arrival IN (?, ?) "
+                    "AND archived = 0 "
+                    "ORDER BY expected_arrival ASC "
+                    "LIMIT 30",
+                    (today_str, tomorrow_str)
+                )
+                for row in cur.fetchall():
+                    oid, name, arr_date, factory = row
+                    name_str = name[:20] + "..." if name and len(name) > 20 else (name or '未命名')
+                    factory_str = f"（{factory}）" if factory else ""
+                    is_today = (arr_date == today_str)
+                    prefix = "🔔 今天到货" if is_today else "⏰ 明天到货"
+                    activities.append((arr_date, f"{prefix}：{name_str} {factory_str}", "arrival"))
+            except Exception:
+                pass
+
+            # ── 按筛选条件过滤 ──
+            if self._activity_type_filter and self._activity_type_filter != "all":
+                activities = [
+                    (ts, desc, mod_key) for ts, desc, mod_key in activities
+                    if mod_key == self._activity_type_filter
+                ]
+
             # 按时间倒序排列，取前30条
             activities.sort(key=lambda x: x[0], reverse=True)
             recent = activities[:30]
 
             if not recent:
                 ctk.CTkLabel(
-                    self.activity_frame, text="暂无最近活动",
+                    self.activity_frame._inner, text="暂无最新动态",
                     font=ctk.CTkFont(size=13),
                     text_color=self.C["text_secondary"],
                 ).pack(anchor="w", pady=8)
                 return
 
             for ts, desc, mod_key in recent:
-                item = ctk.CTkFrame(self.activity_frame, fg_color="transparent")
+                item = ctk.CTkFrame(self.activity_frame._inner, fg_color="transparent")
                 item.pack(fill="x", pady=2)
 
                 # 时间
@@ -789,77 +853,6 @@ class DashboardPage(ctk.CTkFrame):
         if self.switch_page:
             self.switch_page(page_key)
 
-    def _update_todo_list(self, todo_details):
-        """更新待办详情列表（带紧急程度色块）"""
-        # 清空现有列表
-        for widget in self.todo_list_frame.winfo_children():
-            widget.destroy()
-
-        # 优先级颜色映射
-        priority_colors = {
-            "red": "#D4917A",      # 紧急 - 红色
-            "orange": "#E4A36A",   # 中等 - 橙色
-            "blue": "#7BA5B5",     # 一般 - 蓝色
-        }
-
-        for todo in todo_details:
-            # 待办项容器
-            item_frame = ctk.CTkFrame(
-                self.todo_list_frame,
-                fg_color="transparent",
-                corner_radius=4,
-            )
-            item_frame.pack(fill="x", pady=(2, 2))
-
-            # 紧急程度色块（左侧竖条）
-            priority_color = priority_colors.get(todo["priority"], "#7BA5B5")
-            priority_bar = ctk.CTkFrame(
-                item_frame,
-                width=4, height=20,
-                fg_color=priority_color,
-                corner_radius=2,
-            )
-            priority_bar.pack(side="left", padx=(0, 8))
-
-            # 待办文本
-            text_label = ctk.CTkLabel(
-                item_frame,
-                text=f"{todo['icon']} {todo['text']}",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
-                text_color=self.C["text"],
-                anchor="w",
-            )
-            text_label.pack(side="left", fill="x", expand=True)
-
-            # 点击跳转到对应页面
-            if self.switch_page:
-                item_frame.bind("<Button-1>", lambda e, p=todo["page"]: self.switch_page(p))
-                text_label.bind("<Button-1>", lambda e, p=todo["page"]: self.switch_page(p))
-                item_frame.configure(cursor="hand2")
-                text_label.configure(cursor="hand2")
-
-    def _on_todo_click(self):
-        """待办条点击 → 切换到第一个有待办的页面"""
-        try:
-            packaging_active = self.db.get_packagings(archived=0)
-            pending = [r for r in packaging_active
-                       if r.get("contract_status") in ("待签批", "", None)]
-            if pending and self.switch_page:
-                self.switch_page("packaging")
-                return
-
-            collections = self.db.get_collections()
-            unpaid = [c for c in collections if c.get("status") not in ("已结清", "已完成")]
-            if unpaid and self.switch_page:
-                self.switch_page("collection")
-                return
-
-            memos = self.db.get_memos(status="待处理")
-            if memos and self.switch_page:
-                self.switch_page("memo")
-        except Exception as e:
-            print(f"待办跳转失败: {e}")
-
     # ──────────────────────────────────────────────
     # 工具方法
     # ──────────────────────────────────────────────
@@ -867,10 +860,91 @@ class DashboardPage(ctk.CTkFrame):
         if key in self._value_labels:
             self._value_labels[key].configure(text=value)
 
+    def _manual_refresh(self):
+        """手动刷新按钮回调"""
+        self._load_data()
+
     def _auto_refresh(self):
         """每5分钟自动刷新"""
         self._load_data()
         self.after(300000, self._auto_refresh)
 
+    def _rebuild_kpi_cards(self):
+        """根据 settings.txt 中的 kpi_cards 配置重建 KPI 卡片网格"""
+        import os
+        import configparser
+
+        # 重新读取设置
+        _settings_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "settings.txt")
+        _data_dir = os.path.join(os.path.expanduser("~"), "采购管理系统数据")
+        _std_settings_path = os.path.join(_data_dir, "settings.txt")
+        _config = configparser.ConfigParser()
+        if os.path.exists(_std_settings_path):
+            try:
+                _config.read(_std_settings_path, encoding="utf-8")
+            except Exception:
+                pass
+        elif os.path.exists(_settings_path):
+            try:
+                _config.read(_settings_path, encoding="utf-8")
+            except Exception:
+                pass
+
+        _default_kpis = "packaging,collection,purchase,travel"
+        try:
+            _selected_kpis = _config.get("General", "kpi_cards") if "General" in _config else _default_kpis
+        except Exception:
+            _selected_kpis = _default_kpis
+
+        if _selected_kpis == _default_kpis:
+            for _try_path in [_std_settings_path, _settings_path]:
+                if not os.path.exists(_try_path):
+                    continue
+                try:
+                    with open(_try_path, "r", encoding="utf-8") as _f:
+                        for _line in _f:
+                            _line = _line.strip()
+                            if _line.startswith("kpi_cards="):
+                                _selected_kpis = _line.split("=", 1)[1].strip()
+                                break
+                except Exception:
+                    pass
+                if _selected_kpis != _default_kpis:
+                    break
+
+        new_keys = [k.strip() for k in _selected_kpis.split(",") if k.strip()]
+
+        # 对比是否发生变化
+        if new_keys == self._selected_kpi_keys:
+            return
+
+        # 更新并重建
+        self._selected_kpi_keys = new_keys
+
+        # 清空旧引用
+        self._value_labels = {}
+        self._trend_labels = {}
+        self._sparkline_labels = {}
+        self._progress_bars = {}
+        self._card_refs = {}
+
+        # 销毁旧网格中的所有卡片
+        if hasattr(self, '_kpi_grid') and self._kpi_grid.winfo_exists():
+            for child in self._kpi_grid.winfo_children():
+                child.destroy()
+
+        # 重建卡片
+        row = None
+        for i, kpi_key in enumerate(self._selected_kpi_keys):
+            if kpi_key not in AVAILABLE_KPI_CARDS:
+                continue
+            if i % 2 == 0:
+                row = ctk.CTkFrame(self._kpi_grid, fg_color="transparent")
+                row.pack(fill="x", pady=(0, 6))
+            kpi_cfg = AVAILABLE_KPI_CARDS[kpi_key]
+            self._make_kpi_card(row, title=kpi_cfg["title"],
+                keys=kpi_cfg["keys"], color=kpi_cfg["color"], page_key=kpi_cfg["page_key"])
+
     def refresh(self):
+        self._rebuild_kpi_cards()
         self._load_data()
