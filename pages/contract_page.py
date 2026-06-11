@@ -13,6 +13,7 @@ import tkinter as tk
 import os, sys, re, tempfile, zipfile, shutil
 from lxml import etree
 from datetime import datetime
+from ui_utils import WheelScrollFrame
 
 W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 
@@ -136,7 +137,7 @@ class SupplierDialog(ctk.CTkToplevel):
         self._build()
     def _build(self):
         ctk.CTkLabel(self,text="供应商信息",
-            font=ctk.CTkFont(family="Microsoft YaHei",size=16,weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei",size=17,weight="bold"),
         ).pack(pady=(16,12))
         form=ctk.CTkFrame(self,fg_color="transparent")
         form.pack(fill="both",expand=True,padx=20,pady=(0,10))
@@ -151,8 +152,8 @@ class SupplierDialog(ctk.CTkToplevel):
         ]
         for i,(key,label,w) in enumerate(fields):
             ctk.CTkLabel(form,text=label,width=100,anchor="e",
-                font=ctk.CTkFont(size=12)).grid(row=i,column=0,padx=(0,6),pady=4)
-            e=ctk.CTkEntry(form,width=w,height=30,font=ctk.CTkFont(size=12))
+                font=ctk.CTkFont(size=13)).grid(row=i,column=0,padx=(0,6),pady=4)
+            e=ctk.CTkEntry(form,width=w,height=30,font=ctk.CTkFont(size=13))
             e.grid(row=i,column=1,padx=0,pady=4,sticky="w")
             if self.supplier and key in self.supplier:
                 e.insert(0,str(self.supplier.get(key,"")))
@@ -160,10 +161,10 @@ class SupplierDialog(ctk.CTkToplevel):
         bf=ctk.CTkFrame(self,fg_color="transparent")
         bf.pack(fill="x",padx=20,pady=(0,16))
         ctk.CTkButton(bf,text="保存",width=100,height=32,
-            font=ctk.CTkFont(size=13),command=self._save).pack(side="right",padx=4)
+            font=ctk.CTkFont(size=14),command=self._save).pack(side="right",padx=4)
         ctk.CTkButton(bf,text="取消",width=100,height=32,
             fg_color="#6B7280",hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),command=self.destroy).pack(side="right",padx=4)
+            font=ctk.CTkFont(size=14),command=self.destroy).pack(side="right",padx=4)
     def _save(self):
         data={k:v.get().strip() for k,v in self.entries.items()}
         if not data.get("short_name"): messagebox.showwarning("提示","简称不能为空");return
@@ -181,7 +182,7 @@ class PartyAConfigDialog(ctk.CTkToplevel):
         self._build()
     def _build(self):
         ctk.CTkLabel(self,text="甲方信息配置",
-            font=ctk.CTkFont(family="Microsoft YaHei",size=16,weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei",size=17,weight="bold"),
         ).pack(pady=(16,12))
         form=ctk.CTkFrame(self,fg_color="transparent")
         form.pack(fill="both",expand=True,padx=20,pady=(0,10))
@@ -194,8 +195,8 @@ class PartyAConfigDialog(ctk.CTkToplevel):
         ]
         for i,(key,label,w) in enumerate(fields):
             ctk.CTkLabel(form,text=label,width=100,anchor="e",
-                font=ctk.CTkFont(size=13)).grid(row=i,column=0,padx=(0,8),pady=8)
-            e=ctk.CTkEntry(form,width=w,height=32,font=ctk.CTkFont(size=13))
+                font=ctk.CTkFont(size=14)).grid(row=i,column=0,padx=(0,8),pady=8)
+            e=ctk.CTkEntry(form,width=w,height=32,font=ctk.CTkFont(size=14))
             e.grid(row=i,column=1,padx=0,pady=8,sticky="w")
             if self.config and key in self.config:
                 e.insert(0,str(self.config.get(key,"")))
@@ -204,11 +205,11 @@ class PartyAConfigDialog(ctk.CTkToplevel):
         bf.pack(fill="x",padx=20,pady=(0,16))
         ctk.CTkButton(bf,text="保存",width=100,height=34,
             fg_color="#2563BE",hover_color="#1D4ED8",
-            font=ctk.CTkFont(size=13,weight="bold"),
+            font=ctk.CTkFont(size=14,weight="bold"),
             command=self._save).pack(side="right",padx=4)
         ctk.CTkButton(bf,text="取消",width=100,height=34,
             fg_color="#6B7280",hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),command=self.destroy).pack(side="right",padx=4)
+            font=ctk.CTkFont(size=14),command=self.destroy).pack(side="right",padx=4)
     def _save(self):
         data={k:v.get().strip() for k,v in self.entries.items()}
         if not data.get("company_name"): messagebox.showwarning("提示","公司全称不能为空");return
@@ -237,60 +238,60 @@ class ContractPage(ctk.CTkFrame):
     # ── UI ──
     def _build_ui(self):
         # 顶部工具栏
-        toolbar=ctk.CTkFrame(self,fg_color="transparent",height=56)
-        toolbar.pack(fill="x",padx=24,pady=(16,8)); toolbar.pack_propagate(False)
+        toolbar=ctk.CTkFrame(self,fg_color="transparent",height=52)
+        toolbar.pack(fill="x",padx=20,pady=(16,8)); toolbar.pack_propagate(False)
         ctk.CTkLabel(toolbar,text="合同生成",
-            font=ctk.CTkFont(family="Microsoft YaHei",size=20,weight="bold"),
-            text_color=self.C["text"]).pack(side="left",pady=12)
+            font=ctk.CTkFont(family="Microsoft YaHei",size=16,weight="bold"),
+            text_color=self.C["text"]).pack(side="left",pady=14)
         bf=ctk.CTkFrame(toolbar,fg_color="transparent"); bf.pack(side="right",pady=8)
         ctk.CTkButton(bf,text="生成合同",width=130,height=34,
             fg_color=self.C["primary"],hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=13,weight="bold"),
+            font=ctk.CTkFont(size=14,weight="bold"),
             command=self._generate_contract).pack(side="right",padx=4)
         ctk.CTkButton(bf,text="甲方配置",width=120,height=34,
             fg_color="#2563BE",hover_color="#1D4ED8",
-            font=ctk.CTkFont(size=12,weight="bold"),
+            font=ctk.CTkFont(size=13,weight="bold"),
             command=self._open_party_a_config).pack(side="right",padx=4)
         ctk.CTkButton(bf,text="+管理供应商",width=130,height=34,
             fg_color="#B5605A",hover_color="#9B4F4A",
-            font=ctk.CTkFont(size=12,weight="bold"),
+            font=ctk.CTkFont(size=13,weight="bold"),
             command=self._manage_suppliers).pack(side="right",padx=(4,8))
 
         # 供应商检索栏
         sb=ctk.CTkFrame(self,fg_color=self.C["card"],corner_radius=self.C["radius_card"])
         sb.pack(fill="x",padx=24,pady=(0,8))
         ctk.CTkLabel(sb,text="[搜索]  供应商检索：",
-            font=ctk.CTkFont(family="Microsoft YaHei",size=13,weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei",size=14,weight="bold"),
             text_color=self.C["text"]).pack(side="left",padx=(16,6),pady=12)
         self.supplier_var=tk.StringVar()
         self.supplier_combo=ctk.CTkComboBox(sb,
             values=[""]+[s["short_name"] for s in self.suppliers],
             variable=self.supplier_var,width=180,height=32,
-            font=ctk.CTkFont(size=13),command=self._on_supplier_select)
+            font=ctk.CTkFont(size=14),command=self._on_supplier_select)
         self.supplier_combo.pack(side="left",padx=(0,10),pady=12)
-        ctk.CTkLabel(sb,text="或输入：",font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(sb,text="或输入：",font=ctk.CTkFont(size=13),
             text_color="#9CA3AF").pack(side="left",padx=(0,6),pady=12)
         self.search_entry=ctk.CTkEntry(sb,width=140,height=32,
-            placeholder_text="输入简称/全称...",font=ctk.CTkFont(size=12))
+            placeholder_text="输入简称/全称...",font=ctk.CTkFont(size=13))
         self.search_entry.pack(side="left",padx=(0,10),pady=12)
         self.search_entry.bind("<KeyRelease>",self._on_search)
         ctk.CTkButton(sb,text="检索",width=60,height=30,
             fg_color=self.C["primary"],hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             command=lambda:self._on_search(None)).pack(side="left",padx=(0,10),pady=12)
         # 确认按钮
         self.confirm_btn = ctk.CTkButton(sb,text="确认",width=100,height=30,
             fg_color=self.C["success"],hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=12,weight="bold"),
+            font=ctk.CTkFont(size=13,weight="bold"),
             command=self._on_confirm_supplier)
         self.confirm_btn.pack(side="left",padx=(0,10),pady=12)
         ctk.CTkButton(sb,text="重置",width=100,height=30,
             fg_color="#6B7280",hover_color="#4B5563",
-            font=ctk.CTkFont(size=12,weight="bold"),
+            font=ctk.CTkFont(size=13,weight="bold"),
             command=self._on_reset_all).pack(side="left",padx=(0,10),pady=12)
         # 确认状态标签
         self.confirm_status_label = ctk.CTkLabel(sb,text="",
-            font=ctk.CTkFont(size=11),text_color="#9CA3AF")
+            font=ctk.CTkFont(size=12),text_color="#9CA3AF")
         self.confirm_status_label.pack(side="left",padx=(0,10),pady=12)
 
         # 滚动区域
@@ -416,35 +417,35 @@ class ContractPage(ctk.CTkFrame):
         top=ctk.CTkFrame(dialog,fg_color="transparent",height=50)
         top.pack(fill="x",padx=16,pady=(14,4)); top.pack_propagate(False)
         ctk.CTkLabel(top,text="供应商信息库",
-            font=ctk.CTkFont(family="Microsoft YaHei",size=16,weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei",size=17,weight="bold"),
         ).pack(side="left",pady=10)
         ctk.CTkButton(top,text="+ 新增",width=80,height=30,
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             command=lambda:self._add_supplier_dialog(dialog),
         ).pack(side="right",padx=4,pady=8)
-        self._supplier_list_frame=ctk.CTkScrollableFrame(dialog,fg_color="transparent")
+        self._supplier_list_frame=WheelScrollFrame(dialog,fg_color="transparent")
         self._supplier_list_frame.pack(fill="both",expand=True,padx=16,pady=(0,12))
         self._refresh_supplier_list(dialog,self._supplier_list_frame)
     def _refresh_supplier_list(self,dialog,lf):
         for w in lf.winfo_children(): w.destroy()
         if not self.suppliers:
             ctk.CTkLabel(lf,text="暂无供应商数据，点击右上角 [新增] 添加",
-                font=ctk.CTkFont(size=13),text_color="#9CA3AF").pack(pady=24)
+                font=ctk.CTkFont(size=14),text_color="#9CA3AF").pack(pady=24)
         else:
             for s in self.suppliers:
                 r=ctk.CTkFrame(lf,fg_color=self.C["card"],corner_radius=6)
                 r.pack(fill="x",pady=3)
                 info=f"[{s.get('short_name','')}]  {s.get('full_name','')}  |  账期:{s.get('payment_days','')}天  |  {s.get('contact','')} {s.get('phone','')}"
-                ctk.CTkLabel(r,text=info,font=ctk.CTkFont(size=12),anchor="w",
+                ctk.CTkLabel(r,text=info,font=ctk.CTkFont(size=13),anchor="w",
                 ).pack(side="left",padx=(12,4),pady=8)
                 ctk.CTkButton(r,text="编辑",width=50,height=26,
                     fg_color=self.C["primary"],hover_color=self.C["primary_hover"],
-                    font=ctk.CTkFont(size=11),
+                    font=ctk.CTkFont(size=12),
                     command=lambda sup=s: [dialog.destroy(),self._edit_supplier_dialog(sup)],
                 ).pack(side="right",padx=4,pady=4)
                 ctk.CTkButton(r,text="删除",width=50,height=26,
                     fg_color="#B56A6A",hover_color="#A85A5A",
-                    font=ctk.CTkFont(size=11),
+                    font=ctk.CTkFont(size=12),
                     command=lambda sup=s: self._delete_supplier(sup,dialog,lf),
                 ).pack(side="right",padx=2,pady=4)
     def _add_supplier_dialog(self,pd=None):
@@ -485,7 +486,7 @@ class ContractPage(ctk.CTkFrame):
         header=ctk.CTkFrame(card,fg_color="transparent")
         header.pack(fill="x",padx=20,pady=(14,8))
         ctk.CTkLabel(header,text="合同信息",
-            font=ctk.CTkFont(family="Microsoft YaHei",size=15,weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei",size=17,weight="bold"),
             text_color=self.C["text"]).pack(side="left")
         # 确认按钮已移除
         form=ctk.CTkFrame(card,fg_color="transparent")
@@ -495,55 +496,55 @@ class ContractPage(ctk.CTkFrame):
 
         # 第0行：合同编号 (拆分版)
         ctk.CTkLabel(form,text="合同编号：",width=100,anchor="e",
-            font=ctk.CTkFont(size=13)).grid(row=0,column=0,padx=(0,8),pady=6,sticky="e")
+            font=ctk.CTkFont(size=14)).grid(row=0,column=0,padx=(0,8),pady=6,sticky="e")
 
         no_frame = ctk.CTkFrame(form,fg_color="transparent")
         no_frame.grid(row=0,column=1,columnspan=3,padx=4,pady=6,sticky="w")
 
         # SC 前缀
         self.entry_sc_prefix = ctk.CTkEntry(no_frame,width=50,height=32,
-            font=ctk.CTkFont(size=13),justify="center")
+            font=ctk.CTkFont(size=14),justify="center")
         self.entry_sc_prefix.pack(side="left",padx=(0,2))
         self.entry_sc_prefix.insert(0,"SC")
 
         # 年
         self.entry_sc_year = ctk.CTkEntry(no_frame,width=58,height=32,
-            font=ctk.CTkFont(size=13),justify="center")
+            font=ctk.CTkFont(size=14),justify="center")
         self.entry_sc_year.pack(side="left",padx=1)
         self.entry_sc_year.insert(0,str(now.year))
 
-        ctk.CTkLabel(no_frame,text="-",font=ctk.CTkFont(size=14),
+        ctk.CTkLabel(no_frame,text="-",font=ctk.CTkFont(size=16),
             width=12).pack(side="left")
 
         # 月
         self.entry_sc_month = ctk.CTkEntry(no_frame,width=40,height=32,
-            font=ctk.CTkFont(size=13),justify="center")
+            font=ctk.CTkFont(size=14),justify="center")
         self.entry_sc_month.pack(side="left",padx=1)
         self.entry_sc_month.insert(0,f"{now.month:02d}")
 
-        ctk.CTkLabel(no_frame,text="-",font=ctk.CTkFont(size=14),
+        ctk.CTkLabel(no_frame,text="-",font=ctk.CTkFont(size=16),
             width=12).pack(side="left")
 
         # 日
         self.entry_sc_day = ctk.CTkEntry(no_frame,width=40,height=32,
-            font=ctk.CTkFont(size=13),justify="center")
+            font=ctk.CTkFont(size=14),justify="center")
         self.entry_sc_day.pack(side="left",padx=1)
         self.entry_sc_day.insert(0,f"{now.day:02d}")
 
-        ctk.CTkLabel(no_frame,text="-",font=ctk.CTkFont(size=14),
+        ctk.CTkLabel(no_frame,text="-",font=ctk.CTkFont(size=16),
             width=12).pack(side="left")
 
         # 序号
         self.entry_sc_seq = ctk.CTkEntry(no_frame,width=50,height=32,
-            font=ctk.CTkFont(size=13),justify="center")
+            font=ctk.CTkFont(size=14),justify="center")
         self.entry_sc_seq.pack(side="left",padx=1)
         self.entry_sc_seq.insert(0,"01")
 
         # 合并编号显示
-        ctk.CTkLabel(no_frame,text="  => 合并编号：",font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(no_frame,text="  => 合并编号：",font=ctk.CTkFont(size=13),
             text_color="#9CA3AF").pack(side="left",padx=(8,2))
         self.entry_combined_no = ctk.CTkEntry(no_frame,width=200,height=32,
-            font=ctk.CTkFont(size=13,weight="bold"),
+            font=ctk.CTkFont(size=14,weight="bold"),
             state="readonly")
         self.entry_combined_no.pack(side="left",padx=1)
 
@@ -554,26 +555,26 @@ class ContractPage(ctk.CTkFrame):
 
         # 第1行：下单物料
         ctk.CTkLabel(form,text="下单物料：",width=100,anchor="e",
-            font=ctk.CTkFont(size=13)).grid(row=1,column=0,padx=(0,8),pady=6,sticky="e")
+            font=ctk.CTkFont(size=14)).grid(row=1,column=0,padx=(0,8),pady=6,sticky="e")
         self.entry_material_name=ctk.CTkEntry(form,
             placeholder_text="例如：铁棍山药粉纸盒",width=280,height=32,
-            font=ctk.CTkFont(size=13))
+            font=ctk.CTkFont(size=14))
         self.entry_material_name.grid(row=1,column=1,padx=4,pady=6,sticky="w")
 
         # 第2行：签订日期
         ctk.CTkLabel(form,text="签订日期：",width=100,anchor="e",
-            font=ctk.CTkFont(size=13)).grid(row=2,column=0,padx=(0,8),pady=6,sticky="e")
+            font=ctk.CTkFont(size=14)).grid(row=2,column=0,padx=(0,8),pady=6,sticky="e")
         self.entry_contract_date=ctk.CTkEntry(form,
             placeholder_text="2026年06月09日",width=200,height=32,
-            font=ctk.CTkFont(size=13))
+            font=ctk.CTkFont(size=14))
         self.entry_contract_date.grid(row=2,column=1,padx=4,pady=6,sticky="w")
         self.entry_contract_date.insert(0,self._auto_contract_date())
 
         # 合计金额（原结算方式行变为合计金额行）
         ctk.CTkLabel(form,text="合计金额：",width=100,anchor="e",
-            font=ctk.CTkFont(size=13)).grid(row=3,column=0,padx=(0,8),pady=6,sticky="e")
+            font=ctk.CTkFont(size=14)).grid(row=3,column=0,padx=(0,8),pady=6,sticky="e")
         self.total_label=ctk.CTkLabel(form,text="合计: 0.00 元",
-            font=ctk.CTkFont(family="Microsoft YaHei",size=14,weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei",size=16,weight="bold"),
             text_color=self.C["primary"])
         self.total_label.grid(row=3,column=1,sticky="w",padx=4,pady=6)
 
@@ -605,11 +606,11 @@ class ContractPage(ctk.CTkFrame):
         hf=ctk.CTkFrame(card,fg_color="transparent")
         hf.pack(fill="x",padx=20,pady=(14,8))
         ctk.CTkLabel(hf,text="产品信息",
-            font=ctk.CTkFont(family="Microsoft YaHei",size=15,weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei",size=17,weight="bold"),
             text_color=self.C["text"]).pack(side="left")
         ctk.CTkButton(hf,text="+ 添加产品",width=100,height=30,
             fg_color=self.C["success"],hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             command=self._add_product_row).pack(side="right")
         self.product_container=ctk.CTkFrame(card,fg_color="transparent")
         self.product_container.pack(fill="x",padx=20,pady=(0,14))
@@ -617,7 +618,7 @@ class ContractPage(ctk.CTkFrame):
         hdr.pack(fill="x",pady=(0,4))
         for h in ["物料名称","项目号","材料结构","尺寸","单位","数量","单价","金额","备注","操作"]:
             ctk.CTkLabel(hdr,text=h,width=88,anchor="center",
-                font=ctk.CTkFont(size=12,weight="bold")).pack(side="left",padx=1)
+                font=ctk.CTkFont(size=13,weight="bold")).pack(side="left",padx=1)
         self._add_product_row(default=True)
 
         # 确认按钮已移除
@@ -627,13 +628,13 @@ class ContractPage(ctk.CTkFrame):
         rf.pack(fill="x",pady=2)
         entries={}
         for fn in ["物料名称","项目号","材料结构","尺寸","单位","数量","单价"]:
-            e=ctk.CTkEntry(rf,width=88,height=30,font=ctk.CTkFont(size=11))
+            e=ctk.CTkEntry(rf,width=130,height=30,font=ctk.CTkFont(size=12))
             e.pack(side="left",padx=1); entries[fn]=e
-        amt_label=ctk.CTkLabel(rf,text="",width=88,anchor="center",
-            font=ctk.CTkFont(size=11),text_color=self.C["text"])
+        amt_label=ctk.CTkLabel(rf,text="",width=90,anchor="center",
+            font=ctk.CTkFont(size=12),text_color=self.C["text"])
         amt_label.pack(side="left",padx=1)
         entries["_amt_label"]=amt_label
-        e_note=ctk.CTkEntry(rf,width=88,height=30,font=ctk.CTkFont(size=11))
+        e_note=ctk.CTkEntry(rf,width=130,height=30,font=ctk.CTkFont(size=12))
         e_note.pack(side="left",padx=1); entries["备注"]=e_note
         def _calc_amt(*a):
             try:
@@ -654,7 +655,7 @@ class ContractPage(ctk.CTkFrame):
             _calc_amt()
         del_btn=ctk.CTkButton(rf,text="X",width=30,height=30,
             fg_color="#B56A6A",hover_color="#A85A5A",
-            font=ctk.CTkFont(size=11),
+            font=ctk.CTkFont(size=12),
             command=lambda f=rf: self._del_product_row(f))
         del_btn.pack(side="left",padx=2)
         rf.entries=entries; self.product_rows.append(rf)

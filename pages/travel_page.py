@@ -19,12 +19,12 @@ class TravelPage(ctk.CTkFrame):
 
     def _build(self):
         # 顶部标题栏
-        header = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=0, height=64)
-        header.pack(fill="x")
+        header = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0, height=52)
+        header.pack(fill="x", padx=20, pady=(16, 8))
         header.pack_propagate(False)
-        ctk.CTkLabel(header, text="✈️  差旅报销管理",
-                     font=ctk.CTkFont(size=20, weight="bold"),
-                     text_color=self.C["text"]).pack(side="left", padx=24, pady=16)
+        ctk.CTkLabel(header, text="差旅报销",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
+                     text_color=self.C["text"]).pack(side="left", pady=14)
 
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right", padx=16)
@@ -32,26 +32,26 @@ class TravelPage(ctk.CTkFrame):
         self.archive_btn = ctk.CTkButton(
             btn_frame, text="📁 查看归档", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13), command=self._toggle_archive)
+            font=ctk.CTkFont(size=14), command=self._toggle_archive)
         self.archive_btn.pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="＋ 新增差旅", width=110, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._open_form).pack(side="left", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📤 导出Excel", width=110, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._export_xlsx).pack(side="right", padx=4)
 
         # ── v1.2 新增：导入xlsx 按钮 ──
         ctk.CTkButton(
             btn_frame, text="📥 导入xlsx", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._import_xlsx).pack(side="right", padx=4)
 
         # 统计栏
@@ -68,9 +68,9 @@ class TravelPage(ctk.CTkFrame):
         ]:
             f = ctk.CTkFrame(self.stats_frame, fg_color="transparent")
             f.pack(side="left", padx=24, pady=8)
-            ctk.CTkLabel(f, text=label, font=ctk.CTkFont(size=11),
+            ctk.CTkLabel(f, text=label, font=ctk.CTkFont(size=12),
                          text_color=self.C["text_secondary"]).pack()
-            lbl = ctk.CTkLabel(f, text="0", font=ctk.CTkFont(size=18, weight="bold"),
+            lbl = ctk.CTkLabel(f, text="0", font=ctk.CTkFont(size=20, weight="bold"),
                                text_color=color)
             lbl.pack()
             self.stat_labels[key] = lbl
@@ -82,7 +82,7 @@ class TravelPage(ctk.CTkFrame):
         filter_frame.pack_propagate(False)
 
         ctk.CTkLabel(filter_frame, text="报销状态:",
-                     font=ctk.CTkFont(size=12), text_color=self.C["text_secondary"]).pack(
+                     font=ctk.CTkFont(size=13), text_color=self.C["text_secondary"]).pack(
             side="left", padx=(16, 4), pady=12)
         self.filter_reimburse = ctk.CTkComboBox(
             filter_frame, values=["全部", "未报销", "已报销"], width=100, height=28,
@@ -92,7 +92,7 @@ class TravelPage(ctk.CTkFrame):
 
         ctk.CTkButton(filter_frame, text="↺ 刷新", width=60, height=28,
                       fg_color=self.C["border"], text_color=self.C["text"],
-                      hover_color="#CBD5E1", font=ctk.CTkFont(size=12),
+                      hover_color="#CBD5E1", font=ctk.CTkFont(size=13),
                       command=self._load_records).pack(side="left", padx=8)
 
         # 列表
@@ -123,10 +123,10 @@ class TravelPage(ctk.CTkFrame):
         ]
 
         style = ttk.Style()
-        style.configure("Travel.Treeview", font=("Microsoft YaHei", 11),
+        style.configure("Travel.Treeview", font=("Microsoft YaHei", 9),
                          rowheight=38, background="#FFFFFF", fieldbackground="#FFFFFF",
                          foreground="#1E293B")
-        style.configure("Travel.Treeview.Heading", font=("Microsoft YaHei", 11, "bold"),
+        style.configure("Travel.Treeview.Heading", font=("Microsoft YaHei", 9, "bold"),
                          background="#F8FAFC", foreground="#475569", relief="flat")
         style.map("Travel.Treeview", background=[("selected", "#E8D5C4")],
                   foreground=[("selected", "#4A3728")])
@@ -513,19 +513,19 @@ class TravelForm(ctk.CTkToplevel):
         row0 = ctk.CTkFrame(card, fg_color="transparent")
         row0.pack(fill="x", padx=16, pady=(0, 4))
 
-        ctk.CTkLabel(row0, text="出差事由 *", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row0, text="出差事由 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).grid(row=0, column=0, padx=4, pady=4, sticky="w")
         self.reason_var = tk.StringVar()
         ctk.CTkEntry(row0, textvariable=self.reason_var, width=220, height=32,
                      placeholder_text="如：参加供应商洽谈").grid(row=0, column=1, padx=4, pady=4, sticky="w")
 
-        ctk.CTkLabel(row0, text="目的地 *", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row0, text="目的地 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).grid(row=0, column=2, padx=(16, 4), pady=4, sticky="w")
         self.destination_var = tk.StringVar()
         ctk.CTkEntry(row0, textvariable=self.destination_var, width=150, height=32,
                      placeholder_text="如：上海").grid(row=0, column=3, padx=4, pady=4, sticky="w")
 
-        ctk.CTkLabel(row0, text="出差人", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row0, text="出差人", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).grid(row=0, column=4, padx=(16, 4), pady=4, sticky="w")
         self.handler_var = tk.StringVar(value="纪委")
         ctk.CTkEntry(row0, textvariable=self.handler_var, width=100, height=32).grid(
@@ -534,42 +534,42 @@ class TravelForm(ctk.CTkToplevel):
         row1 = ctk.CTkFrame(card, fg_color="transparent")
         row1.pack(fill="x", padx=16, pady=(0, 4))
 
-        ctk.CTkLabel(row1, text="出发日期 *", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row1, text="出发日期 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).pack(side="left", padx=(0, 4))
         self.start_date_var = tk.StringVar(value=date.today().strftime("%Y-%m-%d"))
         ctk.CTkEntry(row1, textvariable=self.start_date_var, width=130, height=32,
                      placeholder_text="YYYY-MM-DD").pack(side="left", padx=4)
         self.start_date_var.trace_add("write", self._calc_duration)
 
-        ctk.CTkLabel(row1, text="  返回日期 *", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row1, text="  返回日期 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).pack(side="left", padx=(8, 4))
         self.end_date_var = tk.StringVar(value=date.today().strftime("%Y-%m-%d"))
         ctk.CTkEntry(row1, textvariable=self.end_date_var, width=130, height=32,
                      placeholder_text="YYYY-MM-DD").pack(side="left", padx=4)
         self.end_date_var.trace_add("write", self._calc_duration)
 
-        ctk.CTkLabel(row1, text="  出差时长：", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row1, text="  出差时长：", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).pack(side="left", padx=(12, 0))
         self.duration_label = ctk.CTkLabel(row1, text="0 天",
-                                            font=ctk.CTkFont(size=13, weight="bold"),
+                                            font=ctk.CTkFont(size=14, weight="bold"),
                                             text_color=self.C["primary"])
         self.duration_label.pack(side="left", padx=4)
 
         row2 = ctk.CTkFrame(card, fg_color="transparent")
         row2.pack(fill="x", padx=16, pady=(0, 4))
-        ctk.CTkLabel(row2, text="报销状态:", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row2, text="报销状态:", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).pack(side="left", padx=(0, 4))
         self.reimburse_var = tk.StringVar(value="未报销")
         for v in ["未报销", "已报销"]:
             ctk.CTkRadioButton(row2, text=v, variable=self.reimburse_var, value=v,
-                               font=ctk.CTkFont(size=12)).pack(side="left", padx=8)
+                               font=ctk.CTkFont(size=13)).pack(side="left", padx=8)
 
-        ctk.CTkLabel(row2, text="  开票状态:", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row2, text="  开票状态:", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).pack(side="left", padx=(16, 4))
         self.invoice_var = tk.StringVar(value="未开票")
         for v in ["未开票", "已开票"]:
             ctk.CTkRadioButton(row2, text=v, variable=self.invoice_var, value=v,
-                               font=ctk.CTkFont(size=12)).pack(side="left", padx=8)
+                               font=ctk.CTkFont(size=13)).pack(side="left", padx=8)
 
         self._section(card, "🚌 交通出行明细")
 
@@ -578,7 +578,7 @@ class TravelForm(ctk.CTkToplevel):
         for txt, w in [("交通工具", 110), ("乘坐日期", 110), ("出发地", 110),
                         ("目的地", 110), ("金额(¥)", 90), ("", 36)]:
             ctk.CTkLabel(t_header, text=txt, width=w,
-                         font=ctk.CTkFont(size=11, weight="bold"),
+                         font=ctk.CTkFont(size=12, weight="bold"),
                          text_color=self.C["text_secondary"]).pack(side="left", padx=2, pady=5)
 
         self.transport_container = ctk.CTkFrame(card, fg_color="transparent")
@@ -587,7 +587,7 @@ class TravelForm(ctk.CTkToplevel):
 
         ctk.CTkButton(card, text="＋ 添加交通行程", height=28, width=130,
                       fg_color="#E2E8F0", text_color=self.C["text"],
-                      hover_color="#CBD5E1", font=ctk.CTkFont(size=11),
+                      hover_color="#CBD5E1", font=ctk.CTkFont(size=12),
                       command=self._add_transport_row).pack(anchor="w", padx=16, pady=4)
 
         self._section(card, "🏨 酒店住宿明细")
@@ -597,7 +597,7 @@ class TravelForm(ctk.CTkToplevel):
         for txt, w in [("入住日期", 110), ("退房日期", 110), ("房间数", 70),
                         ("金额(¥)", 90), ("开票状态", 100), ("", 36)]:
             ctk.CTkLabel(h_header, text=txt, width=w,
-                         font=ctk.CTkFont(size=11, weight="bold"),
+                         font=ctk.CTkFont(size=12, weight="bold"),
                          text_color=self.C["text_secondary"]).pack(side="left", padx=2, pady=5)
 
         self.hotel_container = ctk.CTkFrame(card, fg_color="transparent")
@@ -606,21 +606,21 @@ class TravelForm(ctk.CTkToplevel):
 
         ctk.CTkButton(card, text="＋ 添加住宿记录", height=28, width=130,
                       fg_color="#E2E8F0", text_color=self.C["text"],
-                      hover_color="#CBD5E1", font=ctk.CTkFont(size=11),
+                      hover_color="#CBD5E1", font=ctk.CTkFont(size=12),
                       command=self._add_hotel_row).pack(anchor="w", padx=16, pady=4)
 
         total_row = ctk.CTkFrame(card, fg_color="#F0FDF4", corner_radius=8)
         total_row.pack(fill="x", padx=16, pady=8)
         ctk.CTkLabel(total_row, text="差旅总费用：",
-                     font=ctk.CTkFont(size=13), text_color=self.C["text_secondary"]).pack(
+                     font=ctk.CTkFont(size=14), text_color=self.C["text_secondary"]).pack(
             side="left", padx=16, pady=8)
         self.total_label = ctk.CTkLabel(total_row, text="¥ 0.00",
-                                         font=ctk.CTkFont(size=17, weight="bold"),
+                                         font=ctk.CTkFont(size=19, weight="bold"),
                                          text_color=self.C["success"])
         self.total_label.pack(side="left")
 
         self._section(card, "📝 备注")
-        self.remark_text = ctk.CTkTextbox(card, height=70, font=ctk.CTkFont(size=12))
+        self.remark_text = ctk.CTkTextbox(card, height=70, font=ctk.CTkFont(size=13))
         self.remark_text.pack(fill="x", padx=16, pady=(0, 12))
 
         btn_row = ctk.CTkFrame(card, fg_color="transparent")
@@ -628,16 +628,16 @@ class TravelForm(ctk.CTkToplevel):
         if not self.view_only:
             ctk.CTkButton(btn_row, text="✓ 保存", width=120, height=38,
                           fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-                          font=ctk.CTkFont(size=14, weight="bold"),
+                          font=ctk.CTkFont(size=16, weight="bold"),
                           command=self._save).pack(side="left", padx=4)
         ctk.CTkButton(btn_row, text="✕ 关闭", width=80, height=38,
                       fg_color="#6B7280", hover_color="#4B5563",
-                      font=ctk.CTkFont(size=13), command=self.destroy).pack(side="left", padx=4)
+                      font=ctk.CTkFont(size=14), command=self.destroy).pack(side="left", padx=4)
 
     def _section(self, parent, title):
         f = ctk.CTkFrame(parent, fg_color="transparent")
         f.pack(fill="x", padx=16, pady=(12, 4))
-        ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=13, weight="bold"),
+        ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=14, weight="bold"),
                      text_color=self.C["primary"]).pack(side="left")
         ctk.CTkFrame(f, height=1, fg_color=self.C["border"]).pack(
             side="left", fill="x", expand=True, padx=(8, 0))
@@ -668,11 +668,11 @@ class TravelForm(ctk.CTkToplevel):
             v = tk.StringVar(value=str(data.get(fkey, "")) if data else "")
             vars_[fkey] = v
             ctk.CTkEntry(row, textvariable=v, width=w, height=28,
-                         placeholder_text=ph, font=ctk.CTkFont(size=11)).pack(side="left", padx=2)
+                         placeholder_text=ph, font=ctk.CTkFont(size=12)).pack(side="left", padx=2)
 
         ctk.CTkButton(row, text="✕", width=32, height=28,
                       fg_color="#FEE2E2", text_color=self.C["danger"],
-                      hover_color="#FECACA", font=ctk.CTkFont(size=11),
+                      hover_color="#FECACA", font=ctk.CTkFont(size=12),
                       command=lambda r=row: self._remove_transport(r)).pack(side="left", padx=2)
         self.transport_rows.append({"frame": row, "vars": vars_})
 
@@ -693,7 +693,7 @@ class TravelForm(ctk.CTkToplevel):
             v = tk.StringVar(value=str(data.get(fkey, "")) if data else "")
             vars_[fkey] = v
             ctk.CTkEntry(row, textvariable=v, width=w, height=28,
-                         placeholder_text=ph, font=ctk.CTkFont(size=11)).pack(side="left", padx=2)
+                         placeholder_text=ph, font=ctk.CTkFont(size=12)).pack(side="left", padx=2)
             if fkey == "amount":
                 v.trace_add("write", lambda *a: self._update_total())
 
@@ -704,7 +704,7 @@ class TravelForm(ctk.CTkToplevel):
 
         ctk.CTkButton(row, text="✕", width=32, height=28,
                       fg_color="#FEE2E2", text_color=self.C["danger"],
-                      hover_color="#FECACA", font=ctk.CTkFont(size=11),
+                      hover_color="#FECACA", font=ctk.CTkFont(size=12),
                       command=lambda r=row: self._remove_hotel(r)).pack(side="left", padx=2)
         self.hotel_rows.append({"frame": row, "vars": vars_})
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""报价单页面 v2.0 - 供方配置库、勾选导出、新文件名格式"""
+"""报价单页面 v2.0 - 回归 1.9.6 简洁逻辑 + 供应商检索"""
 
 import customtkinter as ctk
 from tkinter import ttk, messagebox, filedialog
@@ -12,6 +12,7 @@ import openpyxl
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import range_boundaries
+from ui_utils import WheelScrollFrame
 
 
 def _get_resource_path(relative_path):
@@ -22,7 +23,7 @@ def _get_resource_path(relative_path):
 
 
 class QuotationPage(ctk.CTkFrame):
-    """产品报价单主页面 V2.0"""
+    """产品报价单主页面 — 简洁产品列表 + 供应商检索 + 弹窗编辑"""
 
     def __init__(self, parent, db, C):
         super().__init__(parent, fg_color=C["bg"], corner_radius=0)
@@ -30,25 +31,26 @@ class QuotationPage(ctk.CTkFrame):
         self.C = C
         self.products = []
         self.config_data = {}
-        self.checked_ids = set()  # 勾选导出的产品ID集合
+        self._supplier_list = []      # 供应商完整列表（供检索用）
+        self._pending_supplier = {}   # 当前确认的供应商数据
         self._build_ui()
         self._load_data()
 
-    # ═══════════════════════════════════════════════
-    #  UI 构建（按照合同生成页面排版）
-    # ═══════════════════════════════════════════════
+    # ══════════════════════════════════════════════
+    #  UI 构建
+    # ══════════════════════════════════════════════
 
     def _build_ui(self):
         # ── 顶部工具栏 ──
-        toolbar = ctk.CTkFrame(self, fg_color="transparent", height=56)
-        toolbar.pack(fill="x", padx=24, pady=(16, 8))
+        toolbar = ctk.CTkFrame(self, fg_color="transparent", height=52)
+        toolbar.pack(fill="x", padx=20, pady=(16, 8))
         toolbar.pack_propagate(False)
 
         ctk.CTkLabel(
-            toolbar, text="📋  产品报价单",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+            toolbar, text="报价单生成",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
-        ).pack(side="left", pady=12)
+        ).pack(side="left", pady=14)
 
         btn_frame = ctk.CTkFrame(toolbar, fg_color="transparent")
         btn_frame.pack(side="right", pady=8)
@@ -56,469 +58,183 @@ class QuotationPage(ctk.CTkFrame):
         ctk.CTkButton(
             btn_frame, text="📤 导出报价单", width=120, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._export_quotation,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
-            btn_frame, text="+ 供方配置", width=110, height=34,
+            btn_frame, text="+供方信息", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._open_supplier_config,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="⚙ 需方配置", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._open_config,
         ).pack(side="right", padx=4)
 
-        # ── 供应商检索栏（参照合同生成页面）──
+        ctk.CTkButton(
+            btn_frame, text="＋ 添加产品", width=110, height=34,
+            fg_color=self.C["danger"], hover_color="#A85A5A",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._open_form,
+        ).pack(side="left", padx=4)
+
+        # ── 供应商检索栏 ──
         sb = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
         sb.pack(fill="x", padx=24, pady=(0, 8))
 
         ctk.CTkLabel(
             sb, text="🔍  供应商检索：",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             text_color=self.C["text"],
         ).pack(side="left", padx=(16, 6), pady=12)
 
-        # 下拉选择框
-        self.supplier_combo = ttk.Combobox(
-            sb, width=18, height=6, state="readonly",
-            font=("Microsoft YaHei", 11),
+        self.supplier_var = tk.StringVar()
+        self.supplier_combo = ctk.CTkComboBox(
+            sb,
+            values=[""],
+            variable=self.supplier_var,
+            width=180, height=32,
+            font=ctk.CTkFont(size=14),
+            command=self._on_supplier_select,
         )
         self.supplier_combo.pack(side="left", padx=(0, 10), pady=12)
-        self.supplier_combo.bind("<<ComboboxSelected>>", self._on_supplier_selected)
 
-        ctk.CTkLabel(sb, text="或输入：", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(sb, text="或输入：", font=ctk.CTkFont(size=13),
                       text_color="#9CA3AF").pack(side="left", padx=(0, 6), pady=12)
 
         self.search_entry = ctk.CTkEntry(
-            sb, width=160, height=32,
-            placeholder_text="输入简称/全称...", font=ctk.CTkFont(size=12),
+            sb, width=140, height=32,
+            placeholder_text="输入简称/全称...", font=ctk.CTkFont(size=13),
         )
         self.search_entry.pack(side="left", padx=(0, 10), pady=12)
         self.search_entry.bind("<KeyRelease>", self._on_search_key)
-        self.search_entry.bind("<Return>", self._on_search)
 
         ctk.CTkButton(
             sb, text="检索", width=60, height=30,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=12),
-            command=self._on_search,
+            font=ctk.CTkFont(size=13),
+            command=lambda: self._on_search(None),
         ).pack(side="left", padx=(0, 10), pady=12)
 
-        # 确认按钮
         self.confirm_btn = ctk.CTkButton(
             sb, text="确认", width=80, height=30,
             fg_color=self.C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=self._on_confirm_supplier,
         )
         self.confirm_btn.pack(side="left", padx=(0, 10), pady=12)
 
-        # 重置按钮
         ctk.CTkButton(
             sb, text="重置", width=80, height=30,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=self._on_reset_all,
         ).pack(side="left", padx=(0, 10), pady=12)
 
-        # 确认状态标签
-        self.confirm_status_label = ctk.CTkLabel(sb, text="", font=ctk.CTkFont(size=11),
-                                               text_color="#9CA3AF")
-        self.confirm_status_label.pack(side="left", padx=(0, 10), pady=12)
-
-        # ── 滚动区域 ──
-        scroll = ctk.CTkScrollableFrame(self, fg_color="transparent", corner_radius=0)
-        scroll.pack(fill="both", expand=True, padx=24, pady=(0, 16))
-
-        self._build_product_info(scroll)
-        self._build_tier_price(scroll)
-        self._build_product_table(scroll)
-
-    # ═══════════════════════════════════════════════
-    #  产品信息板块（内联表单）
-    # ═══════════════════════════════════════════════
-
-    def _build_product_info(self, parent):
-        """产品信息板块 — 内联表单"""
-        card = ctk.CTkFrame(parent, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
-        card.pack(fill="x", pady=(0, 12))
-
-        # 标题行
-        hf = ctk.CTkFrame(card, fg_color="transparent")
-        hf.pack(fill="x", padx=20, pady=(14, 8))
-        ctk.CTkLabel(
-            hf, text="📦  产品信息",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
-            text_color=self.C["text"],
-        ).pack(side="left")
-
-        # 表单区域
-        form = ctk.CTkFrame(card, fg_color="transparent")
-        form.pack(fill="x", padx=20, pady=(0, 14))
-
-        fields = [
-            ("产品名称 *", "product_name", 200),
-            ("项目号", "item_no", 200),
-            ("材质工艺/描述", "material_process", 280),
-            ("产品尺寸", "product_size", 200),
-            ("供货周期", "supply_cycle", 200),
-            ("发货箱规", "carton_spec", 200),
-            ("单位", "unit", 100),
-        ]
-
-        self.inline_entries = {}
-        for label, key, width in fields:
-            row = ctk.CTkFrame(form, fg_color="transparent")
-            row.pack(fill="x", pady=3)
-            ctk.CTkLabel(
-                row, text=label,
-                width=120, anchor="e",
-                font=ctk.CTkFont(size=12),
-                text_color=self.C.get("text_secondary", "#8B7355"),
-            ).pack(side="left", padx=(0, 8))
-            e = ctk.CTkEntry(row, width=width, height=30, font=ctk.CTkFont(size=12))
-            e.pack(side="left")
-            if key == "unit":
-                e.insert(0, "PCS")
-            self.inline_entries[key] = e
-
-        # 按钮栏
-        bf = ctk.CTkFrame(card, fg_color="transparent")
-        bf.pack(fill="x", padx=20, pady=(0, 14))
         ctk.CTkButton(
-            bf, text="💾 保存产品", width=100, height=32,
-            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=12, weight="bold"),
-            command=self._save_inline_product,
-        ).pack(side="right", padx=4)
-        ctk.CTkButton(
-            bf, text="🗑 清空", width=80, height=32,
-            fg_color="#9CA3AF", hover_color="#6B7280",
-            font=ctk.CTkFont(size=12),
-            command=self._clear_inline_form,
-        ).pack(side="right", padx=4)
+            sb, text="管理", width=80, height=30,
+            fg_color="#8B7355", hover_color="#6B5B45",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=self._open_supplier_manage,
+        ).pack(side="left", padx=(0, 10), pady=12)
 
-    # ═══════════════════════════════════════════════
-    #  阶梯价格板块（内联表单）
-    # ═══════════════════════════════════════════════
-
-    def _build_tier_price(self, parent):
-        """阶梯价格板块 — 内联表单，支持多行阶梯"""
-        card = ctk.CTkFrame(parent, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
-        card.pack(fill="x", pady=(0, 12))
-
-        # 标题行 + 添加阶梯按钮
-        hf = ctk.CTkFrame(card, fg_color="transparent")
-        hf.pack(fill="x", padx=20, pady=(14, 8))
-        ctk.CTkLabel(
-            hf, text="💰  阶梯价格",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
-            text_color=self.C["text"],
-        ).pack(side="left")
-
-        ctk.CTkButton(
-            hf, text="＋ 添加阶梯", width=100, height=28,
-            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=11),
-            command=self._add_inline_tier_row,
-        ).pack(side="right")
-
-        # 阶梯行容器
-        self.inline_tier_frame = ctk.CTkFrame(card, fg_color="transparent")
-        self.inline_tier_frame.pack(fill="x", padx=20, pady=(0, 14))
-
-        # 表头
-        hdr = ctk.CTkFrame(self.inline_tier_frame, fg_color=self.C.get("sidebar", "#EEE5DA"), corner_radius=4)
-        hdr.pack(fill="x", pady=(0, 4))
-        for h_text, w in [("最低数量", 140), ("最高数量(留空=无限)", 180), ("操作", 60)]:
-            ctk.CTkLabel(
-                hdr, text=h_text, width=w, anchor="center",
-                font=ctk.CTkFont(size=11, weight="bold"),
-                text_color=self.C["text"],
-            ).pack(side="left", padx=4, pady=4)
-
-        # 提示文字
-        hint = ctk.CTkLabel(
-            self.inline_tier_frame,
-            text="💡 填入阶梯数量后保存产品，如：100 | 500-999 | ≥1000",
-            font=ctk.CTkFont(size=11), text_color=self.C.get("text_secondary", "#8B7355"),
-        )
-        hint.pack(anchor="w", pady=(2, 6))
-
-        # 默认添加一行
-        self.inline_tier_rows = []
-        self._add_inline_tier_row()
-
-    def _add_inline_tier_row(self):
-        """在阶梯价格区域新增一行输入框"""
-        row = ctk.CTkFrame(self.inline_tier_frame, fg_color="transparent")
-        row.pack(fill="x", pady=2)
-
-        min_entry = ctk.CTkEntry(row, width=140, height=30, font=ctk.CTkFont(size=12),
-                                  placeholder_text="最低数量")
-        min_entry.pack(side="left", padx=4)
-        max_entry = ctk.CTkEntry(row, width=180, height=30, font=ctk.CTkFont(size=12),
-                                  placeholder_text="留空=无上限")
-        max_entry.pack(side="left", padx=4)
-
-        def _remove():
-            row.destroy()
-            self.inline_tier_rows = [tr for tr in self.inline_tier_rows if tr["row"] is not row]
-
-        del_btn = ctk.CTkButton(row, text="✕", width=40, height=30,
-                                fg_color=self.C["danger"], hover_color="#A85A5A",
-                                font=ctk.CTkFont(size=12), command=_remove)
-        del_btn.pack(side="left", padx=4)
-
-        tier_data = {"row": row, "min": min_entry, "max": max_entry}
-        self.inline_tier_rows.append(tier_data)
-
-    # ═══════════════════════════════════════════════
-    #  产品列表表格板块
-    # ═══════════════════════════════════════════════
-
-    def _build_product_table(self, parent):
-        """产品列表表格板块 — Treeview + 勾选列 + 统计信息"""
-        card = ctk.CTkFrame(parent, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
-        card.pack(fill="both", expand=True, pady=(0, 16))
-
-        # 标题行 + 操作按钮
-        hf = ctk.CTkFrame(card, fg_color="transparent")
-        hf.pack(fill="x", padx=20, pady=(14, 8))
-        ctk.CTkLabel(
-            hf, text="📋  产品列表",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
-            text_color=self.C["text"],
-        ).pack(side="left")
-        ctk.CTkButton(
-            hf, text="＋ 添加产品", width=100, height=28,
-            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=11),
-            command=lambda: self._open_form(),
-        ).pack(side="right")
-        ctk.CTkButton(
-            hf, text="全选", width=60, height=28,
-            fg_color="#6B8FA3", hover_color="#5A7A93",
-            font=ctk.CTkFont(size=11),
-            command=self._select_all,
-        ).pack(side="right", padx=(0, 6))
-        ctk.CTkButton(
-            hf, text="清选", width=60, height=28,
-            fg_color="#9CA3AF", hover_color="#6B7280",
-            font=ctk.CTkFont(size=11),
-            command=self._deselect_all,
-        ).pack(side="right", padx=(0, 6))
-
-        # 表格 - 阴影分层：z1 → z2 → z3
-        z1_frame = ctk.CTkFrame(card, fg_color="#E8E2D9", corner_radius=16)
-        z1_frame.pack(fill="both", expand=True, padx=4, pady=4)
-
-        z2_frame = ctk.CTkFrame(z1_frame, fg_color="#F5F0EB", corner_radius=12)
-        z2_frame.pack(fill="both", expand=True, padx=2, pady=2)
-
-        z3_frame = ctk.CTkFrame(z2_frame, fg_color="white", corner_radius=8)
-        z3_frame.pack(fill="both", expand=True, padx=2, pady=2)
-
-        # Treeview 列定义
-        columns = ("idx", "item_no", "name", "size", "process", "cycle", "carton", "tiers", "action")
-        col_widths = [40, 80, 160, 100, 140, 80, 100, 130, 90]
-
-        self.tree = ttk.Treeview(z3_frame, columns=columns, show="headings", height=8,
-                                  selectmode="browse")
-
-        # 配置样式
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure("QuotationTreeview",
-                        background="white",
-                        foreground="#333333",
-                        fieldbackground="white",
-                        font=("Microsoft YaHei", 10),
-                        rowheight=34)
-        style.configure("QuotationTreeview.Heading",
-                        background="#F0EAE0",
-                        foreground="#4A4A4A",
-                        font=("Microsoft YaHei", 10, "bold"))
-        style.map("QuotationTreeview",
-                  background=[("selected", "#D4C4B0")],
-                  foreground=[("selected", "#000000")])
-        style.layout("QuotationTreeview", [("QuotationTreeview.treearea", {"sticky": "nswe"})])
-
-        self.tree.configure(style="QuotationTreeview")
-
-        headings = ["序号", "项目号", "产品名称", "尺寸", "材质/工艺描述", "供货周期", "发货箱规", "阶梯价格", "操作"]
-        for col, heading, w in zip(columns, headings, col_widths):
-            self.tree.heading(col, text=heading)
-            self.tree.column(col, width=w, minwidth=w, anchor="center" if col != "action" else "w")
-
-        # 绑定事件
-        self.tree.bind("<Double-1>", self._on_row_double_click)
-        self.tree.bind("<ButtonRelease-1>", self._on_row_click)
-        self.tree.bind("<Motion>", self._on_hover)
-        self.tree.bind("<Leave>", self._on_leave)
-
-        # 滚动条
-        vsb = ttk.Scrollbar(z3_frame, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(z3_frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-
-        self.tree.grid(row=0, column=0, sticky="nsew")
-        vsb.grid(row=0, column=1, sticky="ns")
-        hsb.grid(row=1, column=0, sticky="ew")
-        z3_frame.grid_rowconfigure(0, weight=1)
-        z3_frame.grid_columnconfigure(0, weight=1)
-
-        # Tag 配置颜色
-        self.tree.tag_configure("checked", background="#E8F0E8")
-        self.tree.tag_configure("odd", background="#FAFAF8")
-        self.tree.tag_configure("even", background="#FFFFFF")
-        self.tree.tag_configure("hover", background="#F0E0D0")
-
-        # 底部统计标签
-        stats_frame = ctk.CTkFrame(card, fg_color="transparent")
-        stats_frame.pack(fill="x", padx=20, pady=(8, 14))
+        # ── 统计栏 ──
+        stats = ctk.CTkFrame(self, fg_color="transparent", height=28)
+        stats.pack(fill="x", padx=24, pady=(0, 4))
         self.stats_label = ctk.CTkLabel(
-            stats_frame, text="加载中...",
-            font=ctk.CTkFont(size=11),
-            text_color=self.C.get("text_secondary", "#8B7355"),
+            stats, text="", font=ctk.CTkFont(size=13),
+            text_color=self.C.get("text_secondary", "#5D5D5D"),
         )
         self.stats_label.pack(side="left")
 
-    # ═══════════════════════════════════════════════
-    #  内联表单操作（保存/清空/确认/重置）
-    # ═══════════════════════════════════════════════
+        # ── 产品表格 ──
+        z1_frame = ctk.CTkFrame(self, fg_color="#E8E2D9", corner_radius=16)
+        z1_frame.pack(fill="both", expand=True, padx=24, pady=(0, 16))
 
-    def _save_inline_product(self):
-        """从内联表单保存产品（含阶梯价格）到数据库"""
-        name = (self.inline_entries.get("product_name").get().strip()
-                if "product_name" in self.inline_entries else "")
-        if not name:
-            messagebox.showerror("错误", "请输入产品名称")
-            return
+        z2_frame = ctk.CTkFrame(z1_frame, fg_color="#F2F0EB", corner_radius=12)
+        z2_frame.pack(fill="both", expand=True, padx=4, pady=4)
 
-        # 收集产品基本信息
-        product_data = {
-            "item_no": self.inline_entries.get("item_no", ctk.CTkEntry()).get().strip(),
-            "product_name": name,
-            "product_size": self.inline_entries.get("product_size", ctk.CTkEntry()).get().strip(),
-            "material_process": self.inline_entries.get("material_process", ctk.CTkEntry()).get().strip(),
-            "supply_cycle": self.inline_entries.get("supply_cycle", ctk.CTkEntry()).get().strip(),
-            "carton_spec": self.inline_entries.get("carton_spec", ctk.CTkEntry()).get().strip(),
-            "unit": self.inline_entries.get("unit", ctk.CTkEntry()).get().strip() or "PCS",
-        }
+        table_frame = ctk.CTkFrame(z2_frame, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        table_frame.pack(fill="both", expand=True, padx=4, pady=4)
 
-        # 收集阶梯价格
-        valid_tiers = []
-        for tr in getattr(self, "inline_tier_rows", []):
-            try:
-                min_qty = int(tr["min"].get().strip())
-            except (ValueError, TypeError):
-                min_qty = 0
-            max_val = tr["max"].get().strip()
-            max_qty = int(max_val) if max_val else None
-            valid_tiers.append({"min_qty": min_qty, "max_qty": max_qty})
+        columns = ("序号", "项目号", "产品名称", "产品尺寸", "材质/工艺", "供货周期", "发货箱规", "阶梯价格", "操作")
 
-        try:
-            pid = self.db.save_quotation_product(product_data)
-            for t in valid_tiers:
-                self.db.save_quotation_tier({**t, "product_id": pid})
-            messagebox.showinfo("成功", f"产品「{name}」已保存")
-            self._clear_inline_form()
-            self._load_data()
-        except Exception as e:
-            import traceback
-            messagebox.showerror("保存失败", f"{e}\n\n{traceback.format_exc()}")
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Quotation.Treeview",
+                         font=("Microsoft YaHei", 9),
+                         rowheight=36,
+                         background="#FFFFFF",
+                         fieldbackground="#FFFFFF",
+                         foreground="#1E293B",
+                         borderwidth=0,
+                         relief="flat")
+        style.configure("Quotation.Treeview.Heading",
+                         font=("Microsoft YaHei", 9, "bold"),
+                         background="#F8FAFC",
+                         foreground="#475569",
+                         relief="flat",
+                         borderwidth=0)
+        style.map("Quotation.Treeview",
+                  background=[("selected", "#E8D5C4")],
+                  foreground=[("selected", "#4A3728")])
+        style.layout("Quotation.Treeview", [
+            ("Treeview.treearea", {"sticky": "nswe"})
+        ])
 
-    def _clear_inline_form(self):
-        """清空内联所有表单字段"""
-        if hasattr(self, "inline_entries"):
-            for key, entry in self.inline_entries.items():
-                entry.delete(0, "end")
-                if key == "unit":
-                    entry.insert(0, "PCS")
-        # 清空阶梯价格行（保留一行空白）
-        if hasattr(self, "inline_tier_frame") and hasattr(self, "inline_tier_rows"):
-            for tr in self.inline_tier_rows:
-                if tr["row"].winfo_exists():
-                    tr["row"].destroy()
-            self.inline_tier_rows = []
-            self._add_inline_tier_row()
+        tree_wrap = tk.Frame(table_frame, bg="#FFFFFF")
+        tree_wrap.pack(fill="both", expand=True, padx=8, pady=8)
 
-    def _on_confirm_supplier(self):
-        """确认按钮：将选中的供应商信息注入当前上下文"""
-        selected = self.supplier_combo.get()
-        if not selected or selected.startswith("—"):
-            # 尝试用文本框内容
-            keyword = self.search_entry.get().strip()
-            if not keyword:
-                messagebox.showwarning("提示", "请先选择或检索供应商，再点击确认")
-                return
-            selected = keyword
-
-        # 存储到实例变量供导出时使用
-        self._pending_supplier = {"supplier_name": selected}
-        self.confirm_status_label.configure(
-            text=f"✅ 已确认：{selected}",
-            text_color=self.C.get("success", "#6B9E6B"),
-            font=ctk.CTkFont(size=11, weight="bold"),
+        self.tree = ttk.Treeview(
+            tree_wrap, style="Quotation.Treeview",
+            columns=columns, show="headings", height=15, selectmode="browse"
         )
 
-    def _on_reset_all(self):
-        """重置所有状态：清空表单、重置下拉框和检索"""
-        self._clear_inline_form()
-        # 重置供应商下拉框
-        if hasattr(self, "supplier_combo"):
-            vals = self.supplier_combo.cget("values")
-            if vals:
-                self.supplier_combo.current(0)
-        # 清空检索框
-        if hasattr(self, "search_entry"):
-            self.search_entry.delete(0, "end")
-        # 重置确认状态
-        if hasattr(self, "confirm_status_label"):
-            self.confirm_status_label.configure(text="", text_color="#9CA3AF",
-                                                font=ctk.CTkFont(size=11))
-        # 清除待定供应商
-        self._pending_supplier = {}
-        # 刷新全部数据
-        self._load_data()
+        widths = {"序号": 50, "项目号": 80, "产品名称": 140, "产品尺寸": 100,
+                  "材质/工艺": 160, "供货周期": 80, "发货箱规": 80, "阶梯价格": 220, "操作": 80}
+        for col in columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=widths.get(col, 100), minwidth=40, stretch=True, anchor="center")
+        self.tree.column("产品名称", anchor="w")
+        self.tree.column("材质/工艺", anchor="w")
+        self.tree.column("阶梯价格", anchor="w")
 
-    # ═══════════════════════════════════════════════
-    #  数据加载与表格渲染（带勾选状态）
-    # ═══════════════════════════════════════════════
+        vsb = ttk.Scrollbar(tree_wrap, orient="vertical", command=self.tree.yview)
+        hsb = ttk.Scrollbar(tree_wrap, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+        self.tree.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        hsb.pack(side="bottom", fill="x")
+        self.tree.tag_configure("odd", background="#F8FAFC")
+        self.tree.tag_configure("even", background="#FFFFFF")
+        self.tree.tag_configure("hover", background="#FFF2E6")
+
+        self.tree.bind("<Double-1>", self._on_row_double_click)
+        self.tree.bind("<Button-1>", self._on_row_click)
+        self.tree.bind("<Motion>", self._on_hover)
+        self.tree.bind("<Leave>", self._on_leave)
+
+    # ══════════════════════════════════════════════
+    #  数据加载与渲染
+    # ══════════════════════════════════════════════
 
     def _load_data(self):
         self.products = self.db.get_quotation_products()
         self.config_data = self.db.get_quotation_config()
         self._render_table()
-        total = len(self.products)
-        total_tiers = sum(len(p.get("tiers", [])) for p in self.products)
-        buyer = self.config_data.get("buyer_name", "")
-        checked_count = len(self.checked_ids)
-        self.stats_label.configure(
-            text=f"共 {total} 款产品 | {total_tiers} 个价格阶梯 | 已选 {checked_count} 条导出 | 需方：{buyer}"
-        )
-        # 刷新供应商下拉列表
+        self._update_stats()
         self._refresh_supplier_combo()
 
     def _render_table(self):
-        self._render_items(self.products)
-
-    def _render_items(self, items):
-        """通用表格渲染（支持全量或过滤后的产品列表）"""
         for item in self.tree.get_children():
             self.tree.delete(item)
-        for idx, p in enumerate(items, 1):
-            pid = p["id"]
-            is_checked = pid in self.checked_ids
-            check_mark = "☑" if is_checked else "☐"
-
+        for idx, p in enumerate(self.products, 1):
             tiers = p.get("tiers", [])
             if tiers:
                 tier_texts = []
@@ -527,18 +243,15 @@ class QuotationPage(ctk.CTkFrame):
                     mx = t.get("max_qty")
                     up = t.get("unit_price", 0)
                     if mx:
-                        tier_texts.append(f"{mn}-{int(mx)-1}")
+                        tier_texts.append(f">={mn} / <{mx}: ¥{up:.2f}")
                     else:
-                        tier_texts.append(f">={mn}")
+                        tier_texts.append(f">={mn}: ¥{up:.2f}")
                 tier_str = " | ".join(tier_texts)
             else:
                 tier_str = "未设置"
 
-            tags = ("checked",) if is_checked else (("odd",) if idx % 2 == 1 else ("even",))
-
-            self.tree.insert("", "end", iid=str(pid),
+            self.tree.insert("", "end", iid=str(p["id"]),
                 values=(
-                    check_mark,
                     idx,
                     p.get("item_no", "-"),
                     p.get("product_name", ""),
@@ -548,99 +261,21 @@ class QuotationPage(ctk.CTkFrame):
                     p.get("carton_spec", "-"),
                     tier_str,
                     "编辑  删除",
-                ),
-                tags=tags,
-            )
-
-    def _render_filtered(self, filtered):
-        """渲染检索过滤后的列表"""
-        self._render_items(filtered)
-        # 更新统计显示
-        total_tiers = sum(len(p.get("tiers", [])) for p in filtered)
-        checked_count = sum(1 for p in filtered if p["id"] in self.checked_ids)
-        buyer = self.config_data.get("buyer_name", "")
-        keyword = self.search_entry.get().strip()
-        self.stats_label.configure(
-            text=f"检索「{keyword}」: {len(filtered)} 款匹配 | {total_tiers} 阶梯 | 已选 {checked_count} 条 | 需方：{buyer}"
-        )
-
-    def _select_all(self):
-        """全选所有产品"""
-        self.checked_ids = set(p["id"] for p in self.products)
-        self._render_table()
-        self._update_stats()
-
-    def _deselect_all(self):
-        """清空所有选择"""
-        self.checked_ids.clear()
-        self._render_table()
-        self._update_stats()
+                ))
 
     def _update_stats(self):
+        total = len(self.products)
         total_tiers = sum(len(p.get("tiers", [])) for p in self.products)
         buyer = self.config_data.get("buyer_name", "")
-        checked_count = len(self.checked_ids)
+        supplier = self._pending_supplier.get("supplier_name", "")
+        supplier_text = f" | 供方：{supplier}" if supplier else " | 供方：未选择"
         self.stats_label.configure(
-            text=f"共 {len(self.products)} 款产品 | {total_tiers} 个价格阶梯 | 已选 {checked_count} 条导出 | 需方：{buyer}"
+            text=f"共 {total} 款产品 | {total_tiers} 个价格阶梯 | 需方：{buyer}{supplier_text}"
         )
 
-    # ═══════════════════════════════════════════════
-    #  供应商检索
-    # ═══════════════════════════════════════════════
-
-    def _on_search_key(self, event):
-        """实时检索（每次按键触发，300ms 防抖）"""
-        if hasattr(self, "_search_after"):
-            self.after_cancel(self._search_after)
-        self._search_after = self.after(300, self._on_search)
-
-    def _on_search(self, event=None):
-        """按供应商名称检索产品并刷新表格"""
-        keyword = self.search_entry.get().strip()
-        if not keyword:
-            # 检索词为空 → 显示全部
-            self._render_table()
-            return
-        keyword_lower = keyword.lower()
-        # 过滤 products 中匹配的产品（按名称模糊匹配）
-        filtered = [
-            p for p in self.products
-            if keyword_lower in (p.get("product_name") or "").lower()
-               or keyword_lower in (p.get("item_no") or "").lower()
-        ]
-        # 临时替换渲染
-        self._render_filtered(filtered)
-
-    # ═══════════════════════════════════════════════
-    #  供应商下拉选择
-    # ═══════════════════════════════════════════════
-
-    def _refresh_supplier_combo(self):
-        """从数据库加载供应商列表，刷新下拉选项"""
-        try:
-            suppliers = self.db.get_all_quotation_suppliers()
-            names = ["— 选择供应商 —"] + [s["supplier_name"] for s in suppliers if s.get("supplier_name")]
-            self.supplier_combo["values"] = names
-            if names:
-                self.supplier_combo.current(0)
-        except Exception:
-            # 表可能尚未创建（首次运行）
-            self.supplier_combo["values"] = []
-            self.supplier_combo.set("")
-
-    def _on_supplier_selected(self, event=None):
-        """下拉选择了某个供应商 → 填入文本框并触发检索"""
-        selected = self.supplier_combo.get()
-        if not selected or selected.startswith("—"):
-            return
-        self.search_entry.delete(0, "end")
-        self.search_entry.insert(0, selected)
-        # 自动触发检索
-        self._on_search()
-
-    # ═══════════════════════════════════════════════
-    #  表格交互（含勾选切换）
-    # ═══════════════════════════════════════════════
+    # ══════════════════════════════════════════════
+    #  表格交互
+    # ══════════════════════════════════════════════
 
     def _on_row_double_click(self, event):
         sel = self.tree.selection()
@@ -652,32 +287,20 @@ class QuotationPage(ctk.CTkFrame):
         col = self.tree.identify_column(event.x)
         if not item:
             return
-
         self.tree.selection_set(item)
         col_idx = int(col.replace("#", "")) - 1
-        oid = int(item)
-
-        # 第0列：点击勾选列 → 切换选中状态
-        if col_idx == 0:
-            if oid in self.checked_ids:
-                self.checked_ids.discard(oid)
-            else:
-                self.checked_ids.add(oid)
-            self._render_table()
-            self._update_stats()
+        if col_idx != 8:
             return
-
-        # 最后一列（索引9）：操作列 → 编辑 / 删除
-        if col_idx == 9:
-            bbox = self.tree.bbox(item, col)
-            if not bbox:
-                return
-            x_rel = event.x - bbox[0]
-            col_w = bbox[2]
-            if x_rel < col_w * 0.5:
-                self._edit_product(oid)
-            else:
-                self._delete_product(oid)
+        bbox = self.tree.bbox(item, col)
+        if not bbox:
+            return
+        x_rel = event.x - bbox[0]
+        col_w = bbox[2]
+        oid = int(item)
+        if x_rel < col_w * 0.5:
+            self._edit_product(oid)
+        else:
+            self._delete_product(oid)
 
     def _on_hover(self, event):
         item = self.tree.identify_row(event.y)
@@ -713,12 +336,11 @@ class QuotationPage(ctk.CTkFrame):
         name = rec.get("product_name", "") if rec else ""
         if messagebox.askyesno("删除确认", f"确定删除产品「{name}」及其所有阶梯价格？", icon="warning"):
             self.db.delete_quotation_product(oid)
-            self.checked_ids.discard(oid)  # 同时清除勾选
             self._load_data()
 
-    # ═══════════════════════════════════════════════
-    #  弹窗打开
-    # ═══════════════════════════════════════════════
+    # ══════════════════════════════════════════════
+    #  弹窗入口
+    # ══════════════════════════════════════════════
 
     def _open_form(self, oid=None):
         try:
@@ -738,15 +360,212 @@ class QuotationPage(ctk.CTkFrame):
 
     def _open_supplier_config(self):
         try:
-            dlg = QuotationSupplierLibraryDialog(self, self.db, self.C, on_save=self._load_data)
+            dlg = QuotationSupplierDialog(self, self.db, self.C, on_save=self._load_data)
             dlg.grab_set()
         except Exception as e:
             import traceback
             messagebox.showerror("打开供方配置失败", f"{e}\n\n{traceback.format_exc()}")
 
-    # ═══════════════════════════════════════════════
-    #  导出Excel（只导出勾选的产品）
-    # ═══════════════════════════════════════════════
+    # ══════════════════════════════════════════════
+    #  供应商检索（保留当前版本的完整逻辑）
+    # ══════════════════════════════════════════════
+
+    def _refresh_supplier_combo(self):
+        """从数据库加载供应商列表，刷新下拉选项"""
+        try:
+            suppliers = self.db.get_all_quotation_suppliers()
+            self._supplier_list = suppliers
+            names = [s["supplier_name"] for s in suppliers if s.get("supplier_name")]
+            self.supplier_combo.configure(values=[""] + names)
+            # 如果已有确认的供应商，保持选择
+            pname = self._pending_supplier.get("supplier_name", "")
+            if pname and pname in names:
+                self.supplier_var.set(pname)
+            elif names:
+                self.supplier_var.set("")
+        except Exception:
+            self._supplier_list = []
+            self.supplier_combo.configure(values=[""])
+            self.supplier_var.set("")
+
+    def _on_search_key(self, event):
+        """键盘输入时实时过滤"""
+        key = self.search_entry.get().strip()
+        self._on_search(None)
+
+    def _on_search(self, event):
+        """检索供应商列表"""
+        key = self.search_entry.get().strip().lower()
+        if not key:
+            names = [s["supplier_name"] for s in self._supplier_list if s.get("supplier_name")]
+            self.supplier_combo.configure(values=[""] + names)
+            self.supplier_var.set("")
+            return
+
+        filtered = []
+        for s in self._supplier_list:
+            sn = (s.get("supplier_name") or "").lower()
+            cp = (s.get("contact_person") or "").lower()
+            addr = (s.get("address") or "").lower()
+            if key in sn or key in cp or key in addr:
+                filtered.append(s.get("supplier_name", ""))
+
+        if filtered:
+            self.supplier_combo.configure(values=[""] + filtered)
+            self.supplier_var.set(filtered[0])
+            # 自动填充 _pending_supplier
+            for s in self._supplier_list:
+                if s.get("supplier_name") == filtered[0]:
+                    self._pending_supplier = dict(s)
+                    break
+        else:
+            self.supplier_combo.configure(values=[""])
+            self.supplier_var.set("")
+            self._pending_supplier = {}
+
+    def _on_supplier_select(self, name):
+        """下拉框选择后填充完整供应商数据"""
+        if not name:
+            self._pending_supplier = {}
+            return
+        for s in self._supplier_list:
+            if s.get("supplier_name") == name:
+                self._pending_supplier = dict(s)
+                break
+        self._update_stats()
+
+    def _on_confirm_supplier(self):
+        """确认当前选择的供应商"""
+        name = self.supplier_var.get().strip()
+        if not name:
+            messagebox.showwarning("提示", "请先选择或检索供应商")
+            return
+        # 确保 _pending_supplier 已填充
+        if not self._pending_supplier or self._pending_supplier.get("supplier_name") != name:
+            for s in self._supplier_list:
+                if s.get("supplier_name") == name:
+                    self._pending_supplier = dict(s)
+                    break
+        self._update_stats()
+        messagebox.showinfo("成功", f"已确认供应商：{name}")
+
+    def _on_reset_all(self):
+        """重置所有状态"""
+        self.supplier_var.set("")
+        self.search_entry.delete(0, "end")
+        self.supplier_combo.configure(values=[""])
+        self._pending_supplier = {}
+        self._update_stats()
+        self._refresh_supplier_combo()
+
+    # ══════════════════════════════════════════════
+    #  供应商管理
+    # ══════════════════════════════════════════════
+
+    def _open_supplier_manage(self):
+        """打开供应商管理弹窗 — 列表展示 + 删除"""
+        try:
+            suppliers = self.db.get_all_quotation_suppliers()
+            if not suppliers:
+                messagebox.showinfo("提示", "暂无供应商数据")
+                return
+
+            dlg = ctk.CTkToplevel(self)
+            dlg.title("供应商管理")
+            dlg.geometry("700x500")
+            dlg.configure(fg_color=self.C["bg"])
+            dlg.transient(self)
+            dlg.grab_set()
+
+            # 居中
+            dlg.update_idletasks()
+            sw = dlg.winfo_screenwidth()
+            sh = dlg.winfo_screenheight()
+            dlg.geometry(f"700x500+{(sw-700)//2}+{(sh-500)//2}")
+
+            # 标题
+            ctk.CTkLabel(
+                dlg, text="🗑  供应商管理",
+                font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+                text_color=self.C["text"],
+            ).pack(pady=(16, 8))
+
+            ctk.CTkLabel(
+                dlg, text=f"共 {len(suppliers)} 个供应商",
+                font=ctk.CTkFont(size=13),
+                text_color=self.C.get("text_secondary", "#8B7355"),
+            ).pack(pady=(0, 8))
+
+            # 可滚动列表
+            scroll_frame = WheelScrollFrame(dlg, fg_color=self.C["card"], corner_radius=8)
+            scroll_frame.pack(fill="both", expand=True, padx=24, pady=(0, 12))
+
+            for i, s in enumerate(suppliers):
+                row = ctk.CTkFrame(scroll_frame, fg_color="transparent", height=44)
+                row.pack(fill="x", padx=8, pady=2)
+                row.pack_propagate(False)
+
+                idx_label = ctk.CTkLabel(
+                    row, text=f"{i+1}.", width=30,
+                    font=ctk.CTkFont(size=13),
+                    text_color=self.C.get("text_secondary", "#8B7355"),
+                )
+                idx_label.pack(side="left", padx=(4, 8), pady=10)
+
+                info = f"{s.get('supplier_name', '')}"
+                contact = s.get("contact_person", "")
+                if contact:
+                    info += f"  |  {contact}"
+                phone = s.get("phone", "")
+                if phone:
+                    info += f"  |  {phone}"
+
+                ctk.CTkLabel(
+                    row, text=info, anchor="w",
+                    font=ctk.CTkFont(size=14),
+                    text_color=self.C["text"],
+                ).pack(side="left", fill="x", expand=True, pady=10)
+
+                sid = s.get("id")
+                def make_delete(rid=sid, rrow=row, rname=s.get("supplier_name", "")):
+                    def _del():
+                        if messagebox.askyesno("删除确认", f"确定删除供应商「{rname}」？\n此操作不可恢复。", icon="warning"):
+                            try:
+                                self.db.delete_quotation_supplier_record(rid)
+                                rrow.destroy()
+                                self._refresh_supplier_combo()
+                                # 如果删除的是当前选中供应商，清空
+                                if self._pending_supplier.get("id") == rid:
+                                    self._pending_supplier = {}
+                                    self.supplier_var.set("")
+                                    self._update_stats()
+                            except Exception as e:
+                                messagebox.showerror("删除失败", str(e))
+                    return _del
+
+                del_btn = ctk.CTkButton(
+                    row, text="删除", width=60, height=30,
+                    fg_color=self.C["danger"], hover_color="#9A5555",
+                    font=ctk.CTkFont(size=13),
+                    command=make_delete(),
+                )
+                del_btn.pack(side="right", padx=4, pady=10)
+
+            # 底部关闭按钮
+            ctk.CTkButton(
+                dlg, text="关闭", width=100, height=36,
+                fg_color="#6B7280", hover_color="#4B5563",
+                font=ctk.CTkFont(size=14),
+                command=dlg.destroy,
+            ).pack(pady=(0, 16))
+
+        except Exception as e:
+            import traceback
+            messagebox.showerror("打开管理失败", f"{e}\n\n{traceback.format_exc()}")
+
+    # ══════════════════════════════════════════════
+    #  导出报价单
+    # ══════════════════════════════════════════════
 
     TEMPLATE_REL = "assets/产品包装报价单_模板.xlsx"
 
@@ -764,67 +583,62 @@ class QuotationPage(ctk.CTkFrame):
         if os.path.exists(alt):
             return alt
         raise FileNotFoundError(
-            f"找不到报价单模板文件，请确认存在以下任一位置：\n  {p}\n  {alt}"
+            "找不到报价单模板文件，请确认存在以下任一位置：\n"
+            f"  {p}\n  {alt}"
         )
 
-    def _get_next_export_seq(self, directory, prefix):
-        """获取指定前缀下当天最大的流水号+1"""
+    def _export_quotation(self):
+        """基于模板导出报价单Excel，点选产品后只导出该条"""
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("提示", "请先在表格中点选一条产品记录，再导出报价单")
+            return
+        oid = int(sel[0])
+        products = [p for p in self.products if p["id"] == oid]
+        if not products:
+            return
+
+        product = products[0]
+        supplier_name = self._pending_supplier.get("supplier_name", "供方")
+        item_no = product.get("item_no", "") or "无编号"
+        pname = product.get("product_name", "产品")
+        date_str = datetime.now().strftime("%Y_%m_%d")
+        # 清理文件名非法字符
+        safe_name = supplier_name.replace("/", "_").replace("\\", "_").replace(":", "_")
+        safe_pname = pname.replace("/", "_").replace("\\", "_").replace(":", "_")
+        safe_item = item_no.replace("/", "_").replace("\\", "_").replace(":", "_")
+        base_name = f"{safe_name}_{safe_item}_{safe_pname}_{date_str}"
+
+        directory = filedialog.askdirectory(title="选择导出目录")
+        if not directory:
+            return
+
+        # 自动递增流水号
         max_idx = 0
         if os.path.isdir(directory):
             for fn in os.listdir(directory):
-                if fn.startswith(prefix) and fn.endswith(".xlsx"):
-                    # 从文件名末尾提取流水号
-                    base = fn[:-5]  # 去掉 .xlsx
-                    last_part = base.rsplit("-", 1)[-1]
+                if fn.startswith(base_name) and fn.endswith(".xlsx"):
                     try:
-                        if last_part.isdigit():
-                            idx = int(last_part)
+                        core = fn[:-5]  # 去掉 .xlsx
+                        suffix = core[len(base_name):]
+                        if suffix.startswith("_"):
+                            idx = int(suffix[1:])
                             if idx > max_idx:
                                 max_idx = idx
-                    except ValueError:
+                    except (ValueError, IndexError):
                         pass
-        return max_idx + 1
-
-    def _export_quotation(self):
-        """基于模板导出报价单Excel —— 只导出勾选的产品"""
-        if not self.checked_ids:
-            messagebox.showinfo("提示", "请先在表格中勾选要导出的产品（点击☐列）\n可使用「全选」按钮一键全选")
-            return
-
-        # 只取勾选的产品，保持原有顺序
-        export_products = [p for p in self.products if p["id"] in self.checked_ids]
-        if not export_products:
-            return
-
-        # 获取当前供方信息（从供方库取最新一条或默认）
-        suppliers = self.db.get_all_quotation_suppliers()
-        current_supplier = suppliers[0] if suppliers else self.db.get_quotation_supplier() or {}
-        supplier_name = current_supplier.get("supplier_name", "供应商")
-
-        # 文件名格式：供应商名称_品名_产品报价单_YYYY-MM-DD-流水号
-        first_product = export_products[0]
-        pname = first_product.get("product_name", "产品")
-        date_str = datetime.now().strftime("%Y-%m-%d")
-        prefix = f"{supplier_name}_{pname}_产品报价单_{date_str}"
-
-        filepath = filedialog.asksaveasfilename(
-            title="保存报价单",
-            defaultextension=".xlsx",
-            initialfile=f"{prefix}-001.xlsx",
-            filetypes=[("Excel文件", "*.xlsx")]
-        )
-        if not filepath:
-            return
+        seq = max_idx + 1
+        filepath = os.path.join(directory, f"{base_name}_{seq:02d}.xlsx")
 
         try:
-            self._generate_excel(filepath, export_products, current_supplier)
-            messagebox.showinfo("导出成功", f"报价单已导出到：\n{filepath}\n\n共导出 {len(export_products)} 款产品")
+            self._generate_excel(filepath, products)
+            messagebox.showinfo("导出成功", f"报价单已导出到：\n{filepath}")
         except Exception as e:
             import traceback
             messagebox.showerror("导出失败", f"{e}\n\n{traceback.format_exc()}")
 
-    def _generate_excel(self, filepath, products=None, supplier=None):
-
+    def _generate_excel(self, filepath, products=None):
+        """生成报价单 Excel（基于模板 — 修复版：不删除多余行，避免页脚错位）"""
         if products is None:
             products = self.products
 
@@ -834,59 +648,22 @@ class QuotationPage(ctk.CTkFrame):
         ws.title = "产品包装报价单"
 
         cfg = self.config_data or {}
-        if supplier is None:
-            supplier = self.db.get_quotation_supplier() or {}
+        supplier = self._pending_supplier or {}
+        if not supplier.get("supplier_name"):
+            try:
+                s = self.db.get_quotation_supplier()
+                if s:
+                    supplier = s
+            except Exception:
+                pass
 
-        normal_font = Font(name="宋体", size=14)
+        normal_font = Font(name="宋体", size=13)
         thin = Side(style="thin")
         border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
         center = Alignment(horizontal="center", vertical="center", wrap_text=True)
         left_wrap = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-        # ============================================================
-        # 1. 需方信息区
-        # ============================================================
-        ws["F5"] = cfg.get("buyer_name", "")
-        ws["F5"].font = normal_font
-        ws["F7"] = cfg.get("buyer_contact", "")
-        ws["F7"].font = normal_font
-        ws["F9"] = str(cfg.get("buyer_phone", ""))
-        ws["F9"].font = normal_font
-        ws["F11"] = cfg.get("buyer_address", "")
-        ws["F11"].font = normal_font
-
-        # ============================================================
-        # 2. 供方信息区
-        # ============================================================
-        ws["O5"] = supplier.get("supplier_name", "")
-        ws["O5"].font = normal_font
-        ws["O6"] = supplier.get("contact_person", "")
-        ws["O6"].font = normal_font
-        ws["O7"] = supplier.get("phone", "")
-        ws["O7"].font = normal_font
-        ws["O8"] = supplier.get("address", "")
-        ws["O8"].font = normal_font
-        ws["O9"] = supplier.get("quote_date", "")
-        ws["O9"].font = normal_font
-        ws["O10"] = supplier.get("quote_validity", "")
-        ws["O10"].font = normal_font
-
-        # ============================================================
-        # 3. 底部条款区
-        # ============================================================
-        ws["E21"] = cfg.get("payment_terms", "按协议条件付款；")
-        ws["E21"].font = normal_font
-        ws["E22"] = cfg.get("transport_method", "物料或者专车请提前说明")
-        ws["E22"].font = normal_font
-        ws["E23"] = cfg.get("delivery_docs", "请随货放【发货单】【厂检报告】")
-        ws["E23"].font = Font(name="宋体", size=14, bold=True, color="FFFF0000")
-        ws["E24"] = cfg.get("quote_requirement", "需含税含运")
-        ws["E24"].font = normal_font
-
-        # ============================================================
-        # 4. 数据行 —— 动态处理（只写入勾选的产品！）
-        # ============================================================
-
+        # ── 计算产品数据所需行数 ──
         total_rows = 0
         for product in products:
             tiers = product.get("tiers", [])
@@ -895,8 +672,9 @@ class QuotationPage(ctk.CTkFrame):
         ORIGINAL_DATA_START = 15
         ORIGINAL_DATA_END = 18
         ORIGINAL_DATA_COUNT = ORIGINAL_DATA_END - ORIGINAL_DATA_START + 1  # =4
+        PAGE_FOOTER_OFFSET = 6  # 模板中数据结束行(18) 到 页脚首行(21) 的偏移：21 - 15 = 6
 
-        # 解除数据区域原有的所有合并单元格
+        # 1. 解除原始数据区域的所有合并单元格
         merges_to_remove = []
         for mc in list(ws.merged_cells.ranges):
             mc_str = str(mc)
@@ -910,42 +688,57 @@ class QuotationPage(ctk.CTkFrame):
             except Exception:
                 pass
 
+        # 2. 处理行数差异
         extra_rows = total_rows - ORIGINAL_DATA_COUNT
         if extra_rows > 0:
+            # 数据多于模板 → 在数据区末尾插入行
             ws.insert_rows(ORIGINAL_DATA_END + 1, extra_rows)
         elif extra_rows < 0:
-            ws.delete_rows(ORIGINAL_DATA_END + extra_rows + 1, -extra_rows)
+            # 数据少于模板 → 只清除多余行内容（不删除行，避免页脚上移错位）
+            # 额外行保留为空，保留边框格式
+            for r in range(ORIGINAL_DATA_START + total_rows, ORIGINAL_DATA_END + 1):
+                for c in range(2, 21):
+                    cell = ws.cell(row=r, column=c)
+                    cell.value = None
+                    cell.border = border_all
 
-        # 清理原数据行
-        for r in range(ORIGINAL_DATA_START, ORIGINAL_DATA_START + total_rows):
+        # 3. 清除数据行旧内容
+        for r in range(ORIGINAL_DATA_START, ORIGINAL_DATA_START + max(total_rows, ORIGINAL_DATA_COUNT)):
             for c in range(2, 21):
                 cell = ws.cell(row=r, column=c)
+                if extra_rows < 0 and r >= ORIGINAL_DATA_START + total_rows:
+                    continue  # 已在上一步处理
                 cell.value = None
 
-        # 写入产品数据（注意：用 products 参数而非 self.products）
+        # 4. 写入产品数据
         current_row = ORIGINAL_DATA_START
 
         for idx, product in enumerate(products, 1):
             tiers = product.get("tiers", [])
-            tier_count = max(1, len(tiers))
+            if not tiers:
+                tiers = [{}]
+            tier_count = len(tiers)
             first_r = current_row
             last_r = current_row + tier_count - 1
 
+            # 设置行高
             for r in range(first_r, last_r + 1):
                 ws.row_dimensions[r].height = 36
 
+            # 产品信息列：如果阶梯>1，跨行合并
             if tier_count > 1:
-                ws.merge_cells(f"B{first_r}:B{last_r}")
-                ws.merge_cells(f"C{first_r}:D{last_r}")
-                ws.merge_cells(f"E{first_r}:F{last_r}")
-                ws.merge_cells(f"G{first_r}:I{last_r}")
-                ws.merge_cells(f"J{first_r}:M{last_r}")
-                ws.merge_cells(f"N{first_r}:N{last_r}")
-                ws.merge_cells(f"O{first_r}:O{last_r}")
+                ws.merge_cells(f"B{first_r}:B{last_r}")   # 序号
+                ws.merge_cells(f"C{first_r}:D{last_r}")   # 项目号
+                ws.merge_cells(f"E{first_r}:F{last_r}")   # 产品名称
+                ws.merge_cells(f"G{first_r}:I{last_r}")   # 产品尺寸
+                ws.merge_cells(f"J{first_r}:M{last_r}")   # 材质/工艺
+                ws.merge_cells(f"N{first_r}:N{last_r}")   # 供货周期
+                ws.merge_cells(f"O{first_r}:O{last_r}")   # 发货箱规
 
             for ti in range(tier_count):
                 r = current_row
 
+                # 仅在首行写产品信息
                 if ti == 0:
                     ws.cell(row=r, column=2, value=idx).font = normal_font
                     ws.cell(row=r, column=2).alignment = center
@@ -990,6 +783,7 @@ class QuotationPage(ctk.CTkFrame):
                     ws.cell(row=r, column=16).border = border_all
                 else:
                     ws.merge_cells(f"P{r}:Q{r}")
+                    ws.cell(row=r, column=16).font = normal_font
                     ws.cell(row=r, column=16).alignment = center
                     ws.cell(row=r, column=16).border = border_all
 
@@ -998,17 +792,49 @@ class QuotationPage(ctk.CTkFrame):
                 ws.cell(row=r, column=18).alignment = center
                 ws.cell(row=r, column=18).border = border_all
 
+                # 补全所有列边框
                 for c_idx in range(2, 21):
                     ws.cell(row=r, column=c_idx).border = border_all
 
                 current_row += 1
+
+        # 5. 页脚区域 — 动态计算位置（避免行插入/删除导致错位）
+        data_end_row = ORIGINAL_DATA_START + max(total_rows, ORIGINAL_DATA_COUNT) - 1
+        F1 = data_end_row + 1  # 空行
+        F2 = data_end_row + 2  # 空行
+
+        # 判断页脚模板偏移：原始页脚在 row 21-24，数据在 15-18，偏移 = 21-15 = 6
+        if extra_rows > 0:
+            F_START = ORIGINAL_DATA_START + PAGE_FOOTER_OFFSET + extra_rows
+        else:
+            F_START = ORIGINAL_DATA_START + PAGE_FOOTER_OFFSET  # 保持原位置
+
+        # 需方信息区 (左)
+        ws.cell(row=5, column=6, value=cfg.get("buyer_name", "")).font = normal_font
+        ws.cell(row=7, column=6, value=cfg.get("buyer_contact", "")).font = normal_font
+        ws.cell(row=9, column=6, value=str(cfg.get("buyer_phone", ""))).font = normal_font
+        ws.cell(row=11, column=6, value=cfg.get("buyer_address", "")).font = normal_font
+
+        # 供方信息区 (右)
+        ws.cell(row=5, column=15, value=supplier.get("supplier_name", "")).font = normal_font
+        ws.cell(row=6, column=15, value=supplier.get("contact_person", "")).font = normal_font
+        ws.cell(row=7, column=15, value=supplier.get("phone", "")).font = normal_font
+        ws.cell(row=8, column=15, value=supplier.get("address", "")).font = normal_font
+        ws.cell(row=9, column=15, value=supplier.get("quote_date", "")).font = normal_font
+        ws.cell(row=10, column=15, value=supplier.get("quote_validity", "")).font = normal_font
+
+        # 底部条款区 — 动态行号
+        ws.cell(row=F_START, column=5, value=cfg.get("payment_terms", "按协议条件付款；")).font = normal_font
+        ws.cell(row=F_START + 1, column=5, value=cfg.get("transport_method", "物料或者专车请提前说明")).font = normal_font
+        ws.cell(row=F_START + 2, column=5, value=cfg.get("delivery_docs", "请随货放【发货单】【厂检报告】")).font = Font(name="宋体", size=13, bold=True, color="FFFF0000")
+        ws.cell(row=F_START + 3, column=5, value=cfg.get("quote_requirement", "需含税含运")).font = normal_font
 
         ws.page_setup.orientation = 'landscape'
         wb.save(filepath)
 
 
 # ============================
-# 报价单产品表单弹窗
+# 报价单产品表单弹窗（完全沿用 1.9.6）
 # ============================
 
 class QuotationForm(ctk.CTkToplevel):
@@ -1037,22 +863,26 @@ class QuotationForm(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             info_frame, text="📦 产品信息",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=16, pady=(12, 8))
 
         fields = [
-            ("项目号", "item_no_entry"), ("产品名称 *", "name_entry"),
-            ("产品尺寸", "size_entry"), ("材质/工艺描述", "process_entry"),
-            ("供货周期", "cycle_entry"), ("发货箱规", "carton_entry"), ("单位", "unit_entry"),
+            ("项目号", "item_no_entry"),
+            ("产品名称 *", "name_entry"),
+            ("产品尺寸", "size_entry"),
+            ("材质/工艺描述", "process_entry"),
+            ("供货周期", "cycle_entry"),
+            ("发货箱规", "carton_entry"),
+            ("单位", "unit_entry"),
         ]
         self.entries = {}
         for label, attr in fields:
             r = ctk.CTkFrame(info_frame, fg_color="transparent")
             r.pack(fill="x", padx=16, pady=3)
             ctk.CTkLabel(r, text=label, width=100, anchor="w",
-                         font=ctk.CTkFont(size=13)).pack(side="left")
-            ent = ctk.CTkEntry(r, height=32, font=ctk.CTkFont(size=13))
+                         font=ctk.CTkFont(size=14)).pack(side="left")
+            ent = ctk.CTkEntry(r, height=32, font=ctk.CTkFont(size=14))
             ent.pack(side="left", fill="x", expand=True, padx=(8, 0))
             self.entries[attr] = ent
 
@@ -1067,14 +897,14 @@ class QuotationForm(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             tier_header, text="💰 阶梯价格",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color=self.C["text"],
         ).pack(side="left")
 
         ctk.CTkButton(
             tier_header, text="＋ 添加阶梯", width=100, height=30,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=12), command=self._add_tier_row,
+            font=ctk.CTkFont(size=13), command=self._add_tier_row,
         ).pack(side="right")
 
         self.tier_container = ctk.CTkFrame(tier_frame, fg_color="transparent")
@@ -1084,41 +914,41 @@ class QuotationForm(ctk.CTkToplevel):
         tier_hdr.pack(fill="x", pady=(0, 4))
         for text, w in [("最低数量", 120), ("最高数量(留空=无限)", 150), ("", 60)]:
             ctk.CTkLabel(tier_hdr, text=text, width=w, anchor="center",
-                         font=ctk.CTkFont(size=11)).pack(side="left", padx=2, pady=2)
+                         font=ctk.CTkFont(size=12)).pack(side="left", padx=2, pady=2)
 
         hint = ctk.CTkLabel(
             self.tier_container,
             text="💡 提示：填入阶梯数量后，导出时每个阶梯会独立显示一行。如：100-499 | 500-999 | ≥1000",
-            font=ctk.CTkFont(size=11), text_color=self.C.get("text_secondary", "#8B7355"),
+            font=ctk.CTkFont(size=12), text_color=self.C.get("text_secondary", "#8B7355"),
         )
         hint.pack(anchor="w", pady=(2, 6))
 
-        # 底部按钮
+        # ── 底部按钮 ──
         btn_frame = ctk.CTkFrame(canvas, fg_color="transparent")
         btn_frame.pack(fill="x", pady=16, padx=4)
 
         ctk.CTkButton(
             btn_frame, text="💾 保存", width=100, height=38,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._save,
         ).pack(side="right", padx=8)
 
         ctk.CTkButton(
             btn_frame, text="取消", width=80, height=38,
             fg_color="#9CA3AF", hover_color="#6B7280",
-            font=ctk.CTkFont(size=13), command=self.destroy,
+            font=ctk.CTkFont(size=14), command=self.destroy,
         ).pack(side="right", padx=8)
 
     def _add_tier_row(self, data=None):
         row = ctk.CTkFrame(self.tier_container, fg_color="transparent")
         row.pack(fill="x", pady=2)
 
-        min_entry = ctk.CTkEntry(row, width=120, height=30, font=ctk.CTkFont(size=12),
+        min_entry = ctk.CTkEntry(row, width=120, height=30, font=ctk.CTkFont(size=13),
                                   placeholder_text="最低数量，如：100")
         min_entry.pack(side="left", padx=4)
 
-        max_entry = ctk.CTkEntry(row, width=150, height=30, font=ctk.CTkFont(size=12),
+        max_entry = ctk.CTkEntry(row, width=150, height=30, font=ctk.CTkFont(size=13),
                                   placeholder_text="最高数量，留空=无上限")
         max_entry.pack(side="left", padx=4)
 
@@ -1128,7 +958,7 @@ class QuotationForm(ctk.CTkToplevel):
 
         del_btn = ctk.CTkButton(row, text="✕", width=40, height=30,
                                 fg_color=self.C["danger"], hover_color="#9A5555",
-                                font=ctk.CTkFont(size=12), command=_remove)
+                                font=ctk.CTkFont(size=13), command=_remove)
         del_btn.pack(side="left", padx=4)
 
         tier_data = {"row": row, "min": min_entry, "max": max_entry}
@@ -1152,7 +982,6 @@ class QuotationForm(ctk.CTkToplevel):
         self.entries["carton_entry"].insert(0, data.get("carton_spec", ""))
         self.entries["unit_entry"].delete(0, "end")
         self.entries["unit_entry"].insert(0, data.get("unit", "PCS"))
-
         for t in data.get("tiers", []):
             self._add_tier_row(t)
 
@@ -1203,7 +1032,7 @@ class QuotationForm(ctk.CTkToplevel):
 
 
 # ============================
-# 报价单配置弹窗（需方信息）
+# 报价单配置弹窗（需方信息 — 沿用 1.9.6）
 # ============================
 
 class QuotationConfigDialog(ctk.CTkToplevel):
@@ -1229,38 +1058,48 @@ class QuotationConfigDialog(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             frame, text="⚙ 需方信息与条款配置",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=16, pady=(12, 8))
 
         self.fields = {}
         config_fields = [
-            ("需方名称", "buyer_name"), ("联系人", "buyer_contact"),
-            ("联系方式", "buyer_phone"), ("送货地址", "buyer_address"),
-            ("付款方式", "payment_terms"), ("运输方式", "transport_method"),
-            ("发货文件要求", "delivery_docs"), ("报价要求", "quote_requirement"),
-            ("模板说明", "quote_template_note"), ("底部注释", "footer_note"),
+            ("需方名称", "buyer_name"),
+            ("联系人", "buyer_contact"),
+            ("联系方式", "buyer_phone"),
+            ("送货地址", "buyer_address"),
+            ("付款方式", "payment_terms"),
+            ("运输方式", "transport_method"),
+            ("发货文件要求", "delivery_docs"),
+            ("报价要求", "quote_requirement"),
+            ("模板说明", "quote_template_note"),
+            ("底部注释", "footer_note"),
         ]
 
         for label, key in config_fields:
             r = ctk.CTkFrame(frame, fg_color="transparent")
             r.pack(fill="x", padx=16, pady=3)
             ctk.CTkLabel(r, text=label, width=110, anchor="w",
-                         font=ctk.CTkFont(size=13)).pack(side="left")
-            ent = ctk.CTkEntry(r, height=32, font=ctk.CTkFont(size=13))
+                         font=ctk.CTkFont(size=14)).pack(side="left")
+            ent = ctk.CTkEntry(r, height=32, font=ctk.CTkFont(size=14))
             ent.pack(side="left", fill="x", expand=True, padx=(8, 0))
             self.fields[key] = ent
 
         btn_frame = ctk.CTkFrame(canvas, fg_color="transparent")
         btn_frame.pack(fill="x", pady=16, padx=4)
 
-        ctk.CTkButton(btn_frame, text="💾 保存配置", width=110, height=38,
-                       fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-                       font=ctk.CTkFont(size=13, weight="bold"),
-                       command=self._save).pack(side="right", padx=8)
-        ctk.CTkButton(btn_frame, text="取消", width=80, height=38,
-                       fg_color="#9CA3AF", hover_color="#6B7280",
-                       font=ctk.CTkFont(size=13), command=self.destroy).pack(side="right", padx=8)
+        ctk.CTkButton(
+            btn_frame, text="💾 保存配置", width=110, height=38,
+            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._save,
+        ).pack(side="right", padx=8)
+
+        ctk.CTkButton(
+            btn_frame, text="取消", width=80, height=38,
+            fg_color="#9CA3AF", hover_color="#6B7280",
+            font=ctk.CTkFont(size=14), command=self.destroy,
+        ).pack(side="right", padx=8)
 
     def _load_config(self):
         cfg = self.db.get_quotation_config()
@@ -1284,204 +1123,87 @@ class QuotationConfigDialog(ctk.CTkToplevel):
 
 
 # ============================
-# 报价单供方配置库弹窗（V2 — 多供应商管理）
+# 报价单供方配置弹窗（沿用 1.9.6）
 # ============================
 
-class QuotationSupplierLibraryDialog(ctk.CTkToplevel):
-    """供方配置库 —— 多供应商增删改查，每次保存自动入库"""
+class QuotationSupplierDialog(ctk.CTkToplevel):
+    """供方信息添加 — 保存到 quotation_suppliers 表"""
 
     def __init__(self, parent, db, C, on_save=None):
         super().__init__(parent)
         self.db = db
         self.C = C
         self.on_save = on_save
-        self.suppliers = []
-        self.editing_sid = None
-        self.title("⚙ 供方配置库")
-        self.geometry("800x620")
+        self.title("添加供方信息")
+        self.geometry("700x500")
         self.configure(fg_color=self.C["bg"])
         self._build_ui()
-        self._load_list()
 
     def _build_ui(self):
-        # 上半部分：表单区
-        form_frame = ctk.CTkScrollableFrame(self, fg_color="transparent", height=260)
-        form_frame.pack(fill="x", padx=16, pady=(12, 4))
-        form_frame.pack_propagate(False)
+        canvas = ctk.CTkScrollableFrame(self, fg_color=self.C["bg"], corner_radius=0)
+        canvas.pack(fill="both", expand=True, padx=16, pady=(12, 8))
 
-        card = ctk.CTkFrame(form_frame, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
-        card.pack(fill="x", padx=4, pady=(0, 4))
-
-        title_text = "编辑供方" if self.editing_sid else "新增供方"
-        self.form_title = ctk.CTkLabel(
-            card, text=f"📝 {title_text}",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
-            text_color=self.C["text"],
-        )
-        self.form_title.pack(anchor="w", padx=16, pady=(12, 6))
-
-        self.fields = {}
-        field_defs = [
-            ("供应商名称 *", "supplier_name"), ("联系人", "contact_person"),
-            ("联系方式", "phone"), ("地址", "address"),
-            ("报价日期", "quote_date"), ("报价有效期", "quote_validity"),
-        ]
-
-        # 两列布局
-        grid_inner = ctk.CTkFrame(card, fg_color="transparent")
-        grid_inner.pack(fill="x", padx=16, pady=(0, 10))
-
-        for i, (label, key) in enumerate(field_defs):
-            r = i // 2
-            c_mod = i % 2
-            row_frame = ctk.CTkFrame(grid_inner, fg_color="transparent")
-            if c_mod == 0:
-                row_frame.pack(fill="x", pady=2)
-            ctk.CTkLabel(row_frame, text=label, width=90, anchor="w",
-                         font=ctk.CTkFont(size=12)).pack(side="left")
-            ent = ctk.CTkEntry(row_frame, height=30, font=ctk.CTkFont(size=12))
-            ent.pack(side="left", fill="x", expand=True, padx=(6, 8 if c_mod == 0 else 0))
-            self.fields[key] = ent
-
-        # 表单按钮
-        form_btns = ctk.CTkFrame(card, fg_color="transparent")
-        form_btns.pack(fill="x", padx=16, pady=(0, 12))
-
-        self.save_btn = ctk.CTkButton(
-            form_btns, text="💾 保存供方", width=100, height=32,
-            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=12, weight="bold"), command=self._save_supplier,
-        )
-        self.save_btn.pack(side="right", padx=4)
-
-        ctk.CTkButton(
-            form_btns, text="+ 新增", width=80, height=32,
-            fg_color=self.C["danger"], hover_color="#A85A5A",
-            font=ctk.CTkFont(size=12), command=self._new_supplier,
-        ).pack(side="right", padx=4)
-
-        # 下半部分：已保存的供应商列表
-        list_frame = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
-        list_frame.pack(fill="both", expand=True, padx=16, pady=(4, 16))
+        frame = ctk.CTkFrame(canvas, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        frame.pack(fill="x", padx=4)
 
         ctk.CTkLabel(
-            list_frame, text="📂 已保存的供方记录",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            frame, text="+ 供方信息",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color=self.C["text"],
-        ).pack(anchor="w", padx=16, pady=(10, 6))
+        ).pack(anchor="w", padx=16, pady=(12, 8))
 
-        # 列表标题
-        hdr = ctk.CTkFrame(list_frame, fg_color=self.C.get("sidebar", "#EEE5DA"), corner_radius=4)
-        hdr.pack(fill="x", padx=12, pady=(0, 4))
-        for txt, w in [("供应商名称", 160), ("联系人", 100), ("电话", 120), ("地址", 200), ("操作", 120)]:
-            ctk.CTkLabel(hdr, text=txt, width=w, anchor="center",
-                         font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=4, pady=4)
+        self.fields = {}
+        config_fields = [
+            ("供应商名称 *", "supplier_name"),
+            ("联系人", "contact_person"),
+            ("联系方式", "phone"),
+            ("地址", "address"),
+            ("报价日期", "quote_date"),
+            ("报价有效期", "quote_validity"),
+        ]
 
-        # 供应商列表容器
-        self.list_container = ctk.CTkScrollableFrame(list_frame, fg_color="transparent")
-        self.list_container.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        for label, key in config_fields:
+            r = ctk.CTkFrame(frame, fg_color="transparent")
+            r.pack(fill="x", padx=16, pady=3)
+            ctk.CTkLabel(r, text=label, width=110, anchor="w",
+                         font=ctk.CTkFont(size=14)).pack(side="left")
+            ent = ctk.CTkEntry(r, height=32, font=ctk.CTkFont(size=14))
+            ent.pack(side="left", fill="x", expand=True, padx=(8, 0))
+            self.fields[key] = ent
 
-    def _new_supplier(self):
-        """清空表单准备新增"""
-        self.editing_sid = None
-        self.form_title.configure(text="📝 新增供方")
-        self.save_btn.configure(text="💾 保存供方")
-        for ent in self.fields.values():
-            ent.delete(0, "end")
+        btn_frame = ctk.CTkFrame(canvas, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=16, padx=4)
 
-    def _load_list(self):
-        """重新加载供应商列表"""
-        self.suppliers = self.db.get_all_quotation_suppliers()
-        # 清空列表控件
-        for widget in self.list_container.winfo_children():
-            widget.destroy()
-        if not self.suppliers:
-            ctk.CTkLabel(self.list_container, text="暂无供方记录，请使用上方表单新增",
-                         font=ctk.CTkFont(size=12), text_color="#999").pack(pady=20)
-            return
-        for s in self.suppliers:
-            self._make_list_row(s)
+        ctk.CTkButton(
+            btn_frame, text="💾 保存", width=100, height=38,
+            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._save,
+        ).pack(side="right", padx=8)
 
-    def _make_list_row(self, s):
-        """创建一行供应商列表项"""
-        sid = s["id"]
-        row = ctk.CTkFrame(self.list_container, fg_color="transparent", height=36)
-        row.pack(fill="x", pady=1)
+        ctk.CTkButton(
+            btn_frame, text="取消", width=80, height=38,
+            fg_color="#9CA3AF", hover_color="#6B7280",
+            font=ctk.CTkFont(size=14), command=self.destroy,
+        ).pack(side="right", padx=8)
 
-        # 高亮当前编辑中的
-        if self.editing_sid == sid:
-            row.configure(fg_color=self.C.get("primary_light", "#F0E0D6"))
-
-        name_lbl = ctk.CTkLabel(row, text=s.get("supplier_name", ""), width=150, anchor="w",
-                                  font=ctk.CTkFont(size=11))
-        name_lbl.pack(side="left", padx=4)
-        ctk.CTkLabel(row, text=s.get("contact_person", ""), width=95, anchor="center",
-                     font=ctk.CTkFont(size=11)).pack(side="left", padx=4)
-        ctk.CTkLabel(row, text=s.get("phone", ""), width=115, anchor="center",
-                     font=ctk.CTkFont(size=11)).pack(side="left", padx=4)
-        addr = s.get("address", "") or "-"
-        if len(addr) > 18:
-            addr = addr[:17] + ".."
-        ctk.CTkLabel(row, text=addr, width=195, anchor="w",
-                     font=ctk.CTkFont(size=11)).pack(side="left", padx=4)
-
-        btn_area = ctk.CTkFrame(row, fg_color="transparent")
-        btn_area.pack(side="left", padx=4)
-
-        ctk.CTkButton(btn_area, text="编辑", width=50, height=26,
-                      fg_color="#6B8FA3", hover_color="#5A7A93",
-                      font=ctk.CTkFont(size=10),
-                      command=lambda sid=sid: self._edit_supplier(sid)).pack(side="left", padx=2)
-        ctk.CTkButton(btn_area, text="删除", width=50, height=26,
-                      fg_color="#B56A6A", hover_color="#A85A5A",
-                      font=ctk.CTkFont(size=10),
-                      command=lambda sid=sid: self._delete_supplier(sid)).pack(side="left", padx=2)
-
-    def _edit_supplier(self, sid):
-        """加载某条供应商到表单进行编辑"""
-        s = next((x for x in self.suppliers if x["id"] == sid), None)
-        if not s:
-            return
-        self.editing_sid = sid
-        self.form_title.configure(text=f"📝 编辑供方 (#{sid})")
-        self.save_btn.configure(text="💾 更新供方")
-        for key, ent in self.fields.items():
-            ent.delete(0, "end")
-            val = s.get(key, "")
-            if val:
-                ent.insert(0, str(val))
-        self._load_list()  # 刷新高亮状态
-
-    def _delete_supplier(self, sid):
-        """删除一条供方记录"""
-        s = next((x for x in self.suppliers if x["id"] == sid), None)
-        name = s.get("supplier_name", "") if s else ""
-        if messagebox.askyesno("确认删除", f"确定删除供方「{name}」？", icon="warning"):
-            self.db.delete_quotation_supplier_record(sid)
-            if self.editing_sid == sid:
-                self._new_supplier()
-            self._load_list()
-
-    def _save_supplier(self):
-        """保存当前表单（新增或更新）"""
+    def _save(self):
         name = self.fields["supplier_name"].get().strip()
         if not name:
             messagebox.showerror("错误", "请输入供应商名称")
             return
 
-        data = {key: ent.get().strip() for key, ent in self.fields.items()}
+        data = {}
+        for key, ent in self.fields.items():
+            data[key] = ent.get().strip()
 
         try:
-            if self.editing_sid:
-                self.db.update_quotation_supplier_record(self.editing_sid, data)
-                messagebox.showinfo("成功", f"供方「{name}」已更新")
-            else:
-                new_id = self.db.save_quotation_supplier_record(data)
-                messagebox.showinfo("成功", f"供方「{name}」已入库 (ID:{new_id})")
-
-            self._new_supplier()
-            self._load_list()
+            # 保存到 quotation_suppliers 表（多供方库）
+            self.db.save_quotation_supplier_record(data)
+            messagebox.showinfo("成功", f"供方「{name}」已保存")
             if self.on_save:
                 self.on_save()
+            self.destroy()
         except Exception as e:
-            messagebox.showerror("保存失败", str(e))
+            import traceback
+            messagebox.showerror("保存失败", f"{e}\n\n{traceback.format_exc()}")

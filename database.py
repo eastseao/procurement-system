@@ -296,6 +296,19 @@ class Database:
             )
         """)
 
+        # ====== 报价单记录表 (V2.0.5 新增) ======
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS quotation_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                supplier_name TEXT DEFAULT '',
+                product_ids TEXT DEFAULT '',        -- JSON 数组：[1,2,3]
+                product_names TEXT DEFAULT '',      -- 逗号分隔的品名（用于列表显示）
+                product_count INTEGER DEFAULT 0,
+                excel_path TEXT DEFAULT '',
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+
         # ====== 三方比价记录表 (V1.9.8 新增) ======
         c.execute("""
             CREATE TABLE IF NOT EXISTS third_party_records (
@@ -886,7 +899,7 @@ class Database:
             ws.title = sheet_name
 
             hdr_fill = PatternFill(start_color="C1816D", end_color="C1816D", fill_type="solid")
-            hdr_font = Font(name="微软雅黑", size=11, bold=True, color="FFFFFF")
+            hdr_font = Font(name="微软雅黑", size=13, bold=True, color="FFFFFF")
             hdr_align = Alignment(horizontal="center", vertical="center")
             thin_border = Border(
                 left=Side(style="thin"), right=Side(style="thin"),
@@ -900,7 +913,7 @@ class Database:
                 cell.alignment = hdr_align
                 cell.border = thin_border
 
-            data_font = Font(name="微软雅黑", size=10)
+            data_font = Font(name="微软雅黑", size=12)
             data_align = Alignment(vertical="center")
             alt_fill = PatternFill(start_color="F7FAFC", end_color="F7FAFC", fill_type="solid")
 
@@ -1243,6 +1256,42 @@ class Database:
         """按 ID 删除某条供方记录"""
         c = self.conn.cursor()
         c.execute("DELETE FROM quotation_suppliers WHERE id=?", (sid,))
+        self.conn.commit()
+
+    # ====== 报价单记录表 (V2.0.5 新增) ======
+    def save_quotation_record(self, data):
+        """保存一条报价单记录，返回新记录 ID"""
+        c = self.conn.cursor()
+        c.execute("""
+            INSERT INTO quotation_records(supplier_name, product_ids, product_names, product_count, excel_path)
+            VALUES(:supplier_name, :product_ids, :product_names, :product_count, :excel_path)
+        """, data)
+        self.conn.commit()
+        return c.lastrowid
+
+    def update_quotation_record_path(self, rid, excel_path):
+        """更新报价单记录的 excel 文件路径"""
+        c = self.conn.cursor()
+        c.execute("UPDATE quotation_records SET excel_path=? WHERE id=?", (excel_path, rid))
+        self.conn.commit()
+
+    def get_quotation_records(self):
+        """获取所有报价单记录，按 ID 倒序（最新的在最前）"""
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM quotation_records ORDER BY id DESC")
+        return [dict(r) for r in c.fetchall()]
+
+    def get_quotation_record(self, rid):
+        """按 ID 获取单条报价单记录"""
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM quotation_records WHERE id=?", (rid,))
+        row = c.fetchone()
+        return dict(row) if row else None
+
+    def delete_quotation_record(self, rid):
+        """按 ID 删除报价单记录"""
+        c = self.conn.cursor()
+        c.execute("DELETE FROM quotation_records WHERE id=?", (rid,))
         self.conn.commit()
 
     # ====== 三方比价记录 (V1.9.8 新增) ======

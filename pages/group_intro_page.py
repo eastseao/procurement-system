@@ -37,21 +37,21 @@ class GroupIntroPage(ctk.CTkFrame):
         ctk.CTkLabel(
             header,
             text="北京同仁堂（集团）有限责任公司",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=23, weight="bold"),
             text_color=self.C["text"],
         ).pack(side="left", padx=24, pady=18)
 
         ctk.CTkLabel(
             header,
             text="组织架构全景图 3.0",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             text_color=self.C["text_secondary"],
         ).pack(side="left", pady=18)
 
         ctk.CTkLabel(
             header,
             text="编制日期：2026年6月2日 | 数据来源：集团官网及公开信息",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
             text_color=self.C["text_secondary"],
         ).pack(side="right", padx=24, pady=18)
 
@@ -62,7 +62,7 @@ class GroupIntroPage(ctk.CTkFrame):
         stats_label = ctk.CTkLabel(
             stats_frame,
             text="集团概况统计",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color=self.C["text"],
         )
         stats_label.pack(anchor="w", padx=18, pady=(14, 10))
@@ -84,13 +84,13 @@ class GroupIntroPage(ctk.CTkFrame):
 
             ctk.CTkLabel(
                 sc, text=num,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=26, weight="bold"),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=29, weight="bold"),
                 text_color=self.C["primary"],
             ).pack(pady=(12, 0))
 
             ctk.CTkLabel(
                 sc, text=label,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
                 text_color=self.C["text_secondary"],
             ).pack(pady=(0, 12))
 
@@ -341,14 +341,14 @@ class GroupIntroPage(ctk.CTkFrame):
         ctk.CTkLabel(
             footer,
             text="北京同仁堂（集团）有限责任公司组织架构全景图 3.0",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
             text_color=self.C["text_secondary"],
         ).pack(side="left", padx=24, pady=12)
 
         ctk.CTkLabel(
             footer,
             text="数据来源：集团官网、企查查、公开信息 | 部分公司营业额数据未公开，具体以企业官方披露为准",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=10),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
             text_color=self.C["text_secondary"],
         ).pack(side="right", padx=24, pady=12)
 
@@ -372,7 +372,7 @@ class GroupIntroPage(ctk.CTkFrame):
         # 图标
         ctk.CTkLabel(
             hdr, text=icon,
-            font=ctk.CTkFont(size=22),
+            font=ctk.CTkFont(size=24),
             text_color="white",
         ).pack(side="left", padx=(16, 10), pady=12)
 
@@ -382,7 +382,7 @@ class GroupIntroPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             info_frame, text=name,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color="white",
         ).pack(anchor="w")
 
@@ -401,14 +401,14 @@ class GroupIntroPage(ctk.CTkFrame):
 
             ctk.CTkLabel(
                 tag_frame, text=tag_text,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=10),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
                 text_color="#8B4513" if is_highlight else "white",
             ).pack(padx=8, pady=2)
 
         # 展开/折叠箭头
         arrow_label = ctk.CTkLabel(
             hdr, text="▼",
-            font=ctk.CTkFont(size=16),
+            font=ctk.CTkFont(size=17),
             text_color="white",
             cursor="hand2",
         )
@@ -436,13 +436,13 @@ class GroupIntroPage(ctk.CTkFrame):
 
                 ctk.CTkLabel(
                     row_f, text=sf_label,
-                    font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+                    font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
                     text_color=self.C["text"],
                 ).pack(side="left")
 
                 ctk.CTkLabel(
                     row_f, text=sf_value,
-                    font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                    font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                     text_color=self.C["text_secondary"],
                     wraplength=700,
                 ).pack(side="left", padx=(4, 0))
@@ -454,7 +454,7 @@ class GroupIntroPage(ctk.CTkFrame):
 
             ctk.CTkLabel(
                 note_box, text=note,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                 text_color=self.C["text_secondary"],
                 wraplength=700,
             ).pack(padx=14, pady=12)
@@ -482,7 +482,7 @@ class GroupIntroPage(ctk.CTkFrame):
         if label:
             ctk.CTkLabel(
                 parent, text=label,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
                 text_color=self.C["text"],
             ).pack(anchor="w", padx=padding[0], pady=(6, 4))
 
@@ -508,7 +508,7 @@ class GroupIntroPage(ctk.CTkFrame):
                 col_f.pack_configure(expand=True)
             ctk.CTkLabel(
                 col_f, text=col_name,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=11, weight="bold"),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
                 text_color="white",
             ).pack(padx=10, pady=8)
 
@@ -526,7 +526,7 @@ class GroupIntroPage(ctk.CTkFrame):
 
                 ctk.CTkLabel(
                     col_f, text=cell_val,
-                    font=ctk.CTkFont(family="Microsoft YaHei", size=11, weight=weight),
+                    font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight=weight),
                     text_color=text_color,
                     wraplength=180 if cidx >= 2 else 80,
                 ).pack(padx=10, pady=6)

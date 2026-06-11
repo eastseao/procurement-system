@@ -10,6 +10,7 @@ from tkinter import messagebox, filedialog
 import customtkinter as ctk
 
 from version import __version__, GITHUB_RELEASES_URL
+from ui_utils import WheelScrollFrame
 
 # ── PIL 可用性检查 ──
 try:
@@ -188,28 +189,28 @@ class SettingsPage(ctk.CTkFrame):
 
     def _build(self):
         # ── 顶部标题栏 ─────────────────────────────
-        header = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=0, height=64)
-        header.pack(fill="x")
+        header = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0, height=52)
+        header.pack(fill="x", padx=20, pady=(16, 8))
         header.pack_propagate(False)
 
         ctk.CTkLabel(
-            header, text="⚙  软件设置",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+            header, text="软件设置",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
-        ).pack(side="left", padx=24, pady=16)
+        ).pack(side="left", pady=14)
 
         # ── 主内容区（左右分栏）─────────────────────
         content = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
         content.pack(fill="both", expand=True)
 
-        # 左侧分类导航
-        left_nav = ctk.CTkFrame(content, width=180, fg_color=self.C["card"], corner_radius=0)
+        # 左侧分类导航（圆角卡片）
+        left_nav = ctk.CTkFrame(content, width=180, fg_color=self.C["card"], corner_radius=12)
         left_nav.pack(side="left", fill="y", padx=(24, 0), pady=16)
         left_nav.pack_propagate(False)
 
         ctk.CTkLabel(
             left_nav, text="设置分类",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=16, pady=(16, 12))
 
@@ -218,7 +219,7 @@ class SettingsPage(ctk.CTkFrame):
             btn = ctk.CTkButton(
                 left_nav,
                 text=f"  {cat_icon}  {cat_name}",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                 fg_color="transparent",
                 text_color=self.C["text"],
                 hover_color=self.C["sidebar_hover"],
@@ -270,7 +271,7 @@ class SettingsPage(ctk.CTkFrame):
         card.pack(fill="x", pady=(0, 12))
 
         ctk.CTkLabel(card, text="主题外观",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
                      text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(16, 8))
 
         self.appear_var = tk.StringVar(value=self.settings["appearance_mode"])
@@ -278,7 +279,7 @@ class SettingsPage(ctk.CTkFrame):
         for label, value in modes:
             rb = ctk.CTkRadioButton(
                 card, text=label, variable=self.appear_var, value=value,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                 fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
                 command=self._on_appearance_changed,
             )
@@ -286,12 +287,12 @@ class SettingsPage(ctk.CTkFrame):
 
         ctk.CTkLabel(card,
                      text="选择亮色或暗色模式，\"跟随系统\"根据 Windows 设置自动切换",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                      text_color=self.C["text_secondary"]).pack(anchor="w", padx=28, pady=(0, 16))
 
         # 主题配色（P2 暗色模式）
         ctk.CTkLabel(card, text="主题配色",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
                      text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(16, 8))
 
         self.theme_mode_var = tk.StringVar(value=self.settings.get("theme", "light"))
@@ -299,19 +300,19 @@ class SettingsPage(ctk.CTkFrame):
         for label, value in theme_modes:
             rb = ctk.CTkRadioButton(
                 card, text=label, variable=self.theme_mode_var, value=value,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                 fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             )
             rb.pack(anchor="w", padx=28, pady=3)
 
         ctk.CTkLabel(card,
                      text="更改后需要重启软件生效",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
                      text_color=self.C["text_secondary"]).pack(anchor="w", padx=28, pady=(0, 16))
 
         # 颜色方案
         ctk.CTkLabel(card, text="颜色方案",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
                      text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(8, 8))
 
         self.theme_var = tk.StringVar(value=self.settings["color_theme"])
@@ -319,14 +320,14 @@ class SettingsPage(ctk.CTkFrame):
         for label, value in themes:
             rb = ctk.CTkRadioButton(
                 card, text=label, variable=self.theme_var, value=value,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                 fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             )
             rb.pack(anchor="w", padx=28, pady=3)
 
         ctk.CTkLabel(card,
                      text="更改后需要重启软件生效",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                      text_color=self.C["text_secondary"]).pack(anchor="w", padx=28, pady=(4, 16))
 
         # 保存按钮
@@ -338,7 +339,7 @@ class SettingsPage(ctk.CTkFrame):
         card.pack(fill="x", pady=(0, 12))
 
         ctk.CTkLabel(card, text="数据存放位置",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
                      text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(16, 8))
 
         current_dir = self.settings.get("data_dir", "")
@@ -351,14 +352,14 @@ class SettingsPage(ctk.CTkFrame):
 
         ctk.CTkEntry(
             path_frame, textvariable=self.data_dir_var,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             state="readonly",
         ).pack(side="left", fill="x", expand=True, padx=(0, 8))
 
         ctk.CTkButton(
             path_frame, text="浏览...", width=80, height=32,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._browse_data_dir,
         ).pack(side="right")
 
@@ -367,13 +368,13 @@ class SettingsPage(ctk.CTkFrame):
         ctk.CTkButton(
             btn_row, text="打开目录",
             fg_color="transparent", text_color=self.C["primary"],
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             command=self._open_data_dir,
         ).pack(side="left")
         ctk.CTkLabel(
             btn_row,
             text="修改后点击「保存设置」生效，数据库将自动迁移",
-            font=ctk.CTkFont(size=11),
+            font=ctk.CTkFont(size=12),
             text_color=self.C["text_secondary"],
         ).pack(side="left", padx=(12, 0))
 
@@ -391,7 +392,7 @@ class SettingsPage(ctk.CTkFrame):
         ctk.CTkCheckBox(
             card, text="开机自动启动",
             variable=self.auto_start_var,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16),
             checkbox_width=22, checkbox_height=22,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
             command=self._on_auto_start_toggled,
@@ -399,7 +400,7 @@ class SettingsPage(ctk.CTkFrame):
 
         ctk.CTkLabel(card,
                      text="勾选后，采购助手将在 Windows 启动时自动运行",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
                      text_color=self.C["text_secondary"]).pack(anchor="w", padx=42, pady=(0, 16))
 
         # 保存按钮
@@ -416,14 +417,14 @@ class SettingsPage(ctk.CTkFrame):
         ctk.CTkCheckBox(
             card, text="常驻任务栏",
             variable=self.tray_enabled_var,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16),
             checkbox_width=22, checkbox_height=22,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
         ).pack(anchor="w", padx=20, pady=16)
 
         ctk.CTkLabel(card,
                      text="开启后，关闭窗口时将弹出选项，可选择「收纳进任务栏」而非直接退出",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
                      text_color=self.C["text_secondary"]).pack(anchor="w", padx=42, pady=(0, 16))
 
         # 保存按钮
@@ -437,7 +438,7 @@ class SettingsPage(ctk.CTkFrame):
         # ── 标题栏 ──────────────────────────────
         ctk.CTkLabel(
             card, text="采购助手 · 软件介绍",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=18, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(20, 10))
 
@@ -447,7 +448,7 @@ class SettingsPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             ver_row, text=f"当前版本  V{__version__}",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color=self.C["primary"],
         ).pack(side="left")
 
@@ -457,19 +458,33 @@ class SettingsPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             github_frame, text="📦  已托管至 GitHub，支持在线版本迭代与自动更新",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=14, pady=(10, 2))
 
+        # 按钮行：前往下载 + 检查更新
+        btn_row = ctk.CTkFrame(github_frame, fg_color="transparent")
+        btn_row.pack(fill="x", padx=14, pady=(4, 10))
+
         release_btn = ctk.CTkButton(
-            github_frame, text="🔗 前往 Releases 下载最新版本",
-            width=260, height=34,
+            btn_row, text="🔗 前往 Releases 下载最新版本",
+            width=240, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
             corner_radius=6,
             command=lambda: webbrowser.open(GITHUB_RELEASES_URL),
         )
-        release_btn.pack(anchor="w", padx=14, pady=(4, 10))
+        release_btn.pack(side="left", padx=(0, 10))
+
+        check_update_btn = ctk.CTkButton(
+            btn_row, text="🔄 检查更新",
+            width=110, height=34,
+            fg_color="#6B8FA3", hover_color="#5A7A93",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            corner_radius=6,
+            command=self._on_check_update,
+        )
+        check_update_btn.pack(side="left")
 
         # ── 分隔线 ──────────────────────────────
         sep = tk.Frame(card, height=1, bg=self.C["divider"])
@@ -478,13 +493,13 @@ class SettingsPage(ctk.CTkFrame):
         # ── 一句话简介 ──────────────────────────
         ctk.CTkLabel(
             card, text="一句话简介",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(0, 6))
 
         ctk.CTkLabel(
             card, text="专为食品行业包装采购打造的桌面工具，覆盖物料下单、三方比价、报价合同、供应商管理、\n成品BOM、应付垫付报销、待办备忘等全流程，一站式提升采购效率。",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             text_color=self.C["text_secondary"],
             justify="left", anchor="w",
         ).pack(fill="x", padx=24, pady=(0, 12))
@@ -492,7 +507,7 @@ class SettingsPage(ctk.CTkFrame):
         # ── 功能模块介绍 ──────────────────────
         ctk.CTkLabel(
             card, text="功能模块介绍",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(14, 6))
 
@@ -518,14 +533,14 @@ class SettingsPage(ctk.CTkFrame):
             
             ctk.CTkLabel(
                 module_frame, text=title,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
                 text_color=self.C["primary"],
                 width=120,
             ).pack(side="left", anchor="w")
             
             ctk.CTkLabel(
                 module_frame, text=desc,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
                 text_color=self.C["text_secondary"],
                 justify="left", anchor="w",
             ).pack(side="left", padx=(8, 0), fill="x", expand=True)
@@ -533,7 +548,7 @@ class SettingsPage(ctk.CTkFrame):
         # ── 技术栈 ──────────────────────────
         ctk.CTkLabel(
             card, text="技术栈",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(0, 6))
 
@@ -546,7 +561,7 @@ class SettingsPage(ctk.CTkFrame):
         for tech in tech_stack:
             ctk.CTkLabel(
                 card, text=f"  • {tech}",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                 text_color=self.C["text_secondary"],
                 justify="left", anchor="w",
             ).pack(fill="x", padx=24, pady=(0, 2))
@@ -558,7 +573,7 @@ class SettingsPage(ctk.CTkFrame):
         # ── 设计亮点 ──────────────────────────
         ctk.CTkLabel(
             card, text="设计亮点",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(0, 6))
 
@@ -571,7 +586,7 @@ class SettingsPage(ctk.CTkFrame):
         for h in design_highlights:
             ctk.CTkLabel(
                 card, text=f"  • {h}",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                 text_color=self.C["text_secondary"],
                 justify="left", anchor="w",
             ).pack(fill="x", padx=24, pady=(0, 2))
@@ -581,7 +596,7 @@ class SettingsPage(ctk.CTkFrame):
         sep4.pack(fill="x", padx=20, pady=(14, 10))
         ctk.CTkLabel(
             card, text="© 2026 EastSeaO",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
             text_color=self.C["text_secondary"],
         ).pack(anchor="w", padx=20, pady=(0, 14))
     def _on_check_update(self):
@@ -614,7 +629,7 @@ class SettingsPage(ctk.CTkFrame):
         # ── 标题 ──────────────────────────
         ctk.CTkLabel(
             card, text="关于作者",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=18, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(20, 10))
 
@@ -662,14 +677,14 @@ class SettingsPage(ctk.CTkFrame):
 
             ctk.CTkLabel(
                 row, text=f"{icon}  {label}：",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                 text_color=self.C["text"],
                 width=80,
             ).pack(side="left")
 
             ctk.CTkLabel(
                 row, text=value,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
                 text_color=self.C["primary"],
             ).pack(side="left")
 
@@ -680,18 +695,18 @@ class SettingsPage(ctk.CTkFrame):
         # ── 联系方式 ──────────────────────────
         ctk.CTkLabel(
             card, text="联系方式",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=20, pady=(0, 8))
 
         ctk.CTkLabel(
             card, text="如果你觉得这个程序对你有所帮助，",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             text_color=self.C["text_secondary"],
         ).pack(anchor="w", padx=24, pady=(0, 2))
         ctk.CTkLabel(
             card, text='欢迎加作者微信 "EastSeaO"，探讨加入更多功能。',
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             text_color=self.C["text_secondary"],
         ).pack(anchor="w", padx=24, pady=(0, 10))
 
@@ -712,7 +727,7 @@ class SettingsPage(ctk.CTkFrame):
                 
                 ctk.CTkLabel(
                     wx_frame, text="微信扫码添加作者",
-                    font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+                    font=ctk.CTkFont(family="Microsoft YaHei", size=12),
                     text_color=self.C["text_secondary"],
                 ).pack(pady=(6, 0))
             except Exception:
@@ -724,7 +739,7 @@ class SettingsPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             github_frame, text="🌐  GitHub 仓库",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=14, pady=(10, 2))
 
@@ -732,7 +747,7 @@ class SettingsPage(ctk.CTkFrame):
             github_frame, text="eastseao / procurement-system",
             width=280, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
             corner_radius=6,
             command=lambda: webbrowser.open(GITHUB_RELEASES_URL.replace("/releases", "")),
         )
@@ -748,7 +763,7 @@ class SettingsPage(ctk.CTkFrame):
         ctk.CTkButton(
             btn_frame, text="✓ 保存设置", width=140, height=40,
             fg_color=self.C["success"], hover_color="#7A9472",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             command=self._save_all,
         ).pack(side="left", padx=4)
 

@@ -24,7 +24,7 @@ class TangxunPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             header, text="🏛  同仁堂堂训",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=23, weight="bold"),
             text_color=self.C["text"],
         ).pack(side="left", padx=24, pady=16)
 
@@ -96,7 +96,7 @@ class TangxunPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             title_frame, text=f"{icon}  {title}",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color=self.C["primary"],
         ).pack(anchor="w")
 
@@ -111,7 +111,7 @@ class TangxunPage(ctk.CTkFrame):
                 continue
             ctk.CTkLabel(
                 card, text=line,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                 text_color=self.C["text"],
                 justify="left",
                 anchor="w",
@@ -128,7 +128,7 @@ class TangxunPage(ctk.CTkFrame):
         # 标题
         ctk.CTkLabel(
             card, text=f"「 {title} 」",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["primary"],
         ).pack(anchor="w", padx=20, pady=(16, 8))
 
@@ -143,7 +143,7 @@ class TangxunPage(ctk.CTkFrame):
         for q in quotes:
             ctk.CTkLabel(
                 quote_bg, text=q,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
                 text_color=self.C["primary"],
                 justify="center",
             ).pack(pady=12)
@@ -152,7 +152,7 @@ class TangxunPage(ctk.CTkFrame):
         if note:
             ctk.CTkLabel(
                 card, text=note,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                 text_color=self.C["text_secondary"],
                 justify="left",
                 anchor="w",

@@ -31,7 +31,7 @@ class PackagingPage(ctk.CTkFrame):
             # 显示 _build_ui 错误
             err_label = ctk.CTkLabel(self, text=f"UI构建错误:\n{e}\n\n{traceback.format_exc()}",
                                      text_color="red", justify="left",
-                                     font=ctk.CTkFont(family="Consolas", size=11))
+                                     font=ctk.CTkFont(family="Consolas", size=12))
             err_label.pack(padx=20, pady=20, fill="both", expand=True)
             return
         try:
@@ -44,15 +44,15 @@ class PackagingPage(ctk.CTkFrame):
     # ── UI 构建 ───────────────────────────────────────
     def _build_ui(self):
         # 顶部工具栏：标题 + 按钮
-        toolbar = ctk.CTkFrame(self, fg_color="transparent", height=56)
-        toolbar.pack(fill="x", padx=24, pady=(16, 4))
+        toolbar = ctk.CTkFrame(self, fg_color="transparent", height=52)
+        toolbar.pack(fill="x", padx=20, pady=(16, 8))
         toolbar.pack_propagate(False)
 
         ctk.CTkLabel(
-            toolbar, text="📦  物料下单",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+            toolbar, text="物料下单跟进",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
-        ).pack(side="left", pady=12)
+        ).pack(side="left", pady=14)
 
         # 右侧按钮
         btn_frame = ctk.CTkFrame(toolbar, fg_color="transparent")
@@ -61,7 +61,7 @@ class PackagingPage(ctk.CTkFrame):
         self.archive_btn = ctk.CTkButton(
             btn_frame, text="📁 查看归档", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13), command=self._toggle_archive
+            font=ctk.CTkFont(size=14), command=self._toggle_archive
         )
         self.archive_btn.pack(side="right", padx=4)
 
@@ -69,7 +69,7 @@ class PackagingPage(ctk.CTkFrame):
         ctk.CTkButton(
             btn_frame, text="📥 导入xlsx", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._import_xlsx,
         ).pack(side="right", padx=4)
 
@@ -77,14 +77,14 @@ class PackagingPage(ctk.CTkFrame):
         ctk.CTkButton(
             btn_frame, text="📤 导出xlsx", width=100, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._export_xlsx,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="＋ 新增物料", width=110, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._open_form,
         ).pack(side="left", padx=4)
 
@@ -92,7 +92,7 @@ class PackagingPage(ctk.CTkFrame):
         ctk.CTkButton(
             btn_frame, text="📄 上传合同", width=120, height=34,
             fg_color="#4A90D6", hover_color="#3A7BC4",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._upload_contract,
         ).pack(side="left", padx=4)
 
@@ -104,13 +104,13 @@ class PackagingPage(ctk.CTkFrame):
         # 项目筛选
         f1 = ctk.CTkFrame(filter_bar, fg_color="transparent")
         f1.pack(side="left", padx=(16, 12), pady=6)
-        ctk.CTkLabel(f1, text="项目：", font=ctk.CTkFont(family="Segoe UI", size=13),
+        ctk.CTkLabel(f1, text="项目：", font=ctk.CTkFont(family="Segoe UI", size=14),
                       text_color=self.C["text"]).pack(side="left")
         self.project_var = ctk.StringVar(value="全部")
         self.project_combo = ctk.CTkComboBox(
             f1, variable=self.project_var,
             values=["全部"], width=130, height=32,
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            font=ctk.CTkFont(family="Segoe UI", size=14),
             command=lambda _: self._load_data(),
         )
         self.project_combo.pack(side="left", padx=(4, 0))
@@ -118,11 +118,11 @@ class PackagingPage(ctk.CTkFrame):
         # 供应商筛选（文本输入框，实时模糊匹配）
         f2 = ctk.CTkFrame(filter_bar, fg_color="transparent")
         f2.pack(side="left", padx=(0, 12), pady=6)
-        ctk.CTkLabel(f2, text="供应商：", font=ctk.CTkFont(family="Segoe UI", size=13),
+        ctk.CTkLabel(f2, text="供应商：", font=ctk.CTkFont(family="Segoe UI", size=14),
                       text_color=self.C["text"]).pack(side="left")
         self.factory_filter_entry = ctk.CTkEntry(
             f2, width=130, height=32,
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            font=ctk.CTkFont(family="Segoe UI", size=14),
             placeholder_text="输入供应商",
         )
         self.factory_filter_entry.pack(side="left", padx=(4, 0))
@@ -131,11 +131,11 @@ class PackagingPage(ctk.CTkFrame):
         # 项目号筛选
         f3 = ctk.CTkFrame(filter_bar, fg_color="transparent")
         f3.pack(side="left", padx=(0, 8), pady=6)
-        ctk.CTkLabel(f3, text="项目号：", font=ctk.CTkFont(family="Segoe UI", size=13),
+        ctk.CTkLabel(f3, text="项目号：", font=ctk.CTkFont(family="Segoe UI", size=14),
                       text_color=self.C["text"]).pack(side="left")
         self.project_no_filter_entry = ctk.CTkEntry(
             f3, width=110, height=32,
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            font=ctk.CTkFont(family="Segoe UI", size=14),
             placeholder_text="8位数字",
         )
         self.project_no_filter_entry.pack(side="left", padx=(4, 0))
@@ -146,7 +146,7 @@ class PackagingPage(ctk.CTkFrame):
         ctk.CTkButton(
             filter_bar, text="✕ 清除筛选", width=90, height=30,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             command=self._clear_filters,
         ).pack(side="right", padx=(0, 12), pady=6)
 
@@ -155,7 +155,7 @@ class PackagingPage(ctk.CTkFrame):
         stats.pack(fill="x", padx=24, pady=(0, 4))
 
         self.stats_label = ctk.CTkLabel(
-            stats, text="", font=ctk.CTkFont(family="Segoe UI", size=12),
+            stats, text="", font=ctk.CTkFont(family="Segoe UI", size=13),
             text_color=self.C.get("text_secondary", "#5D5D5D"),
         )
         self.stats_label.pack(side="left")
@@ -178,7 +178,7 @@ class PackagingPage(ctk.CTkFrame):
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("Packaging.Treeview",
-                         font=("Microsoft YaHei", 11),
+                         font=("Microsoft YaHei", 9),
                          rowheight=36,
                          background="#FFFFFF",
                          fieldbackground="#FFFFFF",
@@ -186,7 +186,7 @@ class PackagingPage(ctk.CTkFrame):
                          borderwidth=0,
                          relief="flat")
         style.configure("Packaging.Treeview.Heading",
-                         font=("Microsoft YaHei", 11, "bold"),
+                         font=("Microsoft YaHei", 9, "bold"),
                          background="#F8FAFC",
                          foreground="#475569",
                          relief="flat",
@@ -904,7 +904,7 @@ class PackagingForm(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             info_frame, text="📋 基本信息",
-            font=ctk.CTkFont(family="Segoe UI", size=15, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=17, weight="bold"),
             text_color=self.C["text"],
         ).pack(anchor="w", padx=16, pady=(12, 8))
 
@@ -912,9 +912,9 @@ class PackagingForm(ctk.CTkToplevel):
         row1 = ctk.CTkFrame(info_frame, fg_color="transparent")
         row1.pack(fill="x", padx=16, pady=4)
         ctk.CTkLabel(row1, text="物料名称 *", width=90, anchor="w",
-                      font=ctk.CTkFont(family="Segoe UI", size=13)).pack(side="left")
+                      font=ctk.CTkFont(family="Segoe UI", size=14)).pack(side="left")
         self.name_entry = ctk.CTkEntry(
-            row1, height=34, font=ctk.CTkFont(size=13),
+            row1, height=34, font=ctk.CTkFont(size=14),
             placeholder_text="请输入物料名称",
         )
         self.name_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
@@ -923,9 +923,9 @@ class PackagingForm(ctk.CTkToplevel):
         row1b = ctk.CTkFrame(info_frame, fg_color="transparent")
         row1b.pack(fill="x", padx=16, pady=4)
         ctk.CTkLabel(row1b, text="项目号", width=90, anchor="w",
-                      font=ctk.CTkFont(family="Segoe UI", size=13)).pack(side="left")
+                      font=ctk.CTkFont(family="Segoe UI", size=14)).pack(side="left")
         self.project_no_entry = ctk.CTkEntry(
-            row1b, height=34, font=ctk.CTkFont(size=13),
+            row1b, height=34, font=ctk.CTkFont(size=14),
             placeholder_text="请输入项目号",
         )
         self.project_no_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
@@ -934,9 +934,9 @@ class PackagingForm(ctk.CTkToplevel):
         row1b2 = ctk.CTkFrame(info_frame, fg_color="transparent")
         row1b2.pack(fill="x", padx=16, pady=4)
         ctk.CTkLabel(row1b2, text="下单数量", width=90, anchor="w",
-                      font=ctk.CTkFont(family="Segoe UI", size=13)).pack(side="left")
+                      font=ctk.CTkFont(family="Segoe UI", size=14)).pack(side="left")
         self.order_quantity_entry = ctk.CTkEntry(
-            row1b2, height=34, font=ctk.CTkFont(size=13),
+            row1b2, height=34, font=ctk.CTkFont(size=14),
             placeholder_text="请输入数量",
         )
         self.order_quantity_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
@@ -945,9 +945,9 @@ class PackagingForm(ctk.CTkToplevel):
         row1c = ctk.CTkFrame(info_frame, fg_color="transparent")
         row1c.pack(fill="x", padx=16, pady=4)
         ctk.CTkLabel(row1c, text="下单厂家", width=90, anchor="w",
-                      font=ctk.CTkFont(family="Segoe UI", size=13)).pack(side="left")
+                      font=ctk.CTkFont(family="Segoe UI", size=14)).pack(side="left")
         self.order_factory_entry = ctk.CTkEntry(
-            row1c, height=34, font=ctk.CTkFont(size=13),
+            row1c, height=34, font=ctk.CTkFont(size=14),
             placeholder_text="请输入下单厂家",
         )
         self.order_factory_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
@@ -956,19 +956,19 @@ class PackagingForm(ctk.CTkToplevel):
         row2 = ctk.CTkFrame(info_frame, fg_color="transparent")
         row2.pack(fill="x", padx=16, pady=4)
         ctk.CTkLabel(row2, text="所属项目 *", width=90, anchor="w",
-                      font=ctk.CTkFont(family="Segoe UI", size=13)).pack(side="left")
+                      font=ctk.CTkFont(family="Segoe UI", size=14)).pack(side="left")
         self.project_var = ctk.StringVar()
         projects = self.db.get_projects()
         self.project_combo = ctk.CTkComboBox(
             row2, variable=self.project_var,
             values=projects, width=200, height=34,
-            font=ctk.CTkFont(family="Segoe UI", size=13),
+            font=ctk.CTkFont(family="Segoe UI", size=14),
         )
         self.project_combo.pack(side="left", padx=(8, 4))
         ctk.CTkButton(
             row2, text="＋", width=36, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=16, weight="bold"),
             command=self._add_project,
         ).pack(side="left")
 
@@ -986,21 +986,21 @@ class PackagingForm(ctk.CTkToplevel):
         self.arrival_btn = ctk.CTkButton(
             btn_frame, text="✅ 确认到货并归档", width=150, height=38,
             fg_color=self.C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._confirm_arrival,
         )
 
         ctk.CTkButton(
             btn_frame, text="💾 保存", width=100, height=38,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._save,
         ).pack(side="right", padx=8)
 
         ctk.CTkButton(
             btn_frame, text="取消", width=80, height=38,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self.destroy,
         ).pack(side="right", padx=8)
 
@@ -1022,13 +1022,13 @@ class PackagingForm(ctk.CTkToplevel):
             header, text="▼" if self._section_visible[section_key] else "▶",
             width=28, height=28, fg_color="transparent",
             text_color=self.C["text"], hover_color=self.C["bg"],
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
         )
         toggle_btn.pack(side="left")
 
         ctk.CTkLabel(
             header, text=title,
-            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
             text_color=self.C["text"],
         ).pack(side="left", padx=(4, 0))
 
@@ -1055,23 +1055,23 @@ class PackagingForm(ctk.CTkToplevel):
         row1 = ctk.CTkFrame(parent, fg_color="transparent")
         row1.pack(fill="x", pady=3)
         ctk.CTkLabel(row1, text="比价单价", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.compare_price_entry = ctk.CTkEntry(row1, height=30, font=ctk.CTkFont(size=12))
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.compare_price_entry = ctk.CTkEntry(row1, height=30, font=ctk.CTkFont(size=13))
         self.compare_price_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row2 = ctk.CTkFrame(parent, fg_color="transparent")
         row2.pack(fill="x", pady=3)
         ctk.CTkLabel(row2, text="比价日期", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.compare_date_entry = ctk.CTkEntry(row2, height=30, font=ctk.CTkFont(size=12),
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.compare_date_entry = ctk.CTkEntry(row2, height=30, font=ctk.CTkFont(size=13),
                                                placeholder_text="YYYY-MM-DD")
         self.compare_date_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row3 = ctk.CTkFrame(parent, fg_color="transparent")
         row3.pack(fill="x", pady=3)
         ctk.CTkLabel(row3, text="比价备注", width=90, anchor="nw",
-                      font=ctk.CTkFont(size=12)).pack(side="left", pady=4)
-        self.compare_remark_text = ctk.CTkTextbox(row3, height=60, font=ctk.CTkFont(size=12))
+                      font=ctk.CTkFont(size=13)).pack(side="left", pady=4)
+        self.compare_remark_text = ctk.CTkTextbox(row3, height=60, font=ctk.CTkFont(size=13))
         self.compare_remark_text.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
     # ── ② 合同环节 ───────────────────────────────────
@@ -1079,20 +1079,20 @@ class PackagingForm(ctk.CTkToplevel):
         row1 = ctk.CTkFrame(parent, fg_color="transparent")
         row1.pack(fill="x", pady=3)
         ctk.CTkLabel(row1, text="合同状态", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
+                      font=ctk.CTkFont(size=13)).pack(side="left")
         self.contract_status_var = ctk.StringVar()
         self.contract_status_combo = ctk.CTkComboBox(
             row1, variable=self.contract_status_var,
             values=self.CONTRACT_STATUS, width=160, height=30,
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
         )
         self.contract_status_combo.pack(side="left", padx=(8, 0))
 
         row2 = ctk.CTkFrame(parent, fg_color="transparent")
         row2.pack(fill="x", pady=3)
         ctk.CTkLabel(row2, text="合同备注", width=90, anchor="nw",
-                      font=ctk.CTkFont(size=12)).pack(side="left", pady=4)
-        self.contract_remark_text = ctk.CTkTextbox(row2, height=60, font=ctk.CTkFont(size=12))
+                      font=ctk.CTkFont(size=13)).pack(side="left", pady=4)
+        self.contract_remark_text = ctk.CTkTextbox(row2, height=60, font=ctk.CTkFont(size=13))
         self.contract_remark_text.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
     # ── ③ 通知厂家环节 ────────────────────────────────
@@ -1100,24 +1100,24 @@ class PackagingForm(ctk.CTkToplevel):
         row1 = ctk.CTkFrame(parent, fg_color="transparent")
         row1.pack(fill="x", pady=3)
         ctk.CTkLabel(row1, text="通知日期", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.notify_date_entry = ctk.CTkEntry(row1, height=30, font=ctk.CTkFont(size=12),
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.notify_date_entry = ctk.CTkEntry(row1, height=30, font=ctk.CTkFont(size=13),
                                               placeholder_text="YYYY-MM-DD")
         self.notify_date_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row2 = ctk.CTkFrame(parent, fg_color="transparent")
         row2.pack(fill="x", pady=3)
         ctk.CTkLabel(row2, text="沟通货期", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.expected_delivery_entry = ctk.CTkEntry(row2, height=30, font=ctk.CTkFont(size=12),
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.expected_delivery_entry = ctk.CTkEntry(row2, height=30, font=ctk.CTkFont(size=13),
                                                      placeholder_text="YYYY-MM-DD")
         self.expected_delivery_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row3 = ctk.CTkFrame(parent, fg_color="transparent")
         row3.pack(fill="x", pady=3)
         ctk.CTkLabel(row3, text="通知备注", width=90, anchor="nw",
-                      font=ctk.CTkFont(size=12)).pack(side="left", pady=4)
-        self.notify_remark_text = ctk.CTkTextbox(row3, height=60, font=ctk.CTkFont(size=12))
+                      font=ctk.CTkFont(size=13)).pack(side="left", pady=4)
+        self.notify_remark_text = ctk.CTkTextbox(row3, height=60, font=ctk.CTkFont(size=13))
         self.notify_remark_text.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
     # ── ④ 生产进度环节 ────────────────────────────────
@@ -1125,24 +1125,24 @@ class PackagingForm(ctk.CTkToplevel):
         row1 = ctk.CTkFrame(parent, fg_color="transparent")
         row1.pack(fill="x", pady=3)
         ctk.CTkLabel(row1, text="生产周期", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.production_cycle_entry = ctk.CTkEntry(row1, height=30, font=ctk.CTkFont(size=12),
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.production_cycle_entry = ctk.CTkEntry(row1, height=30, font=ctk.CTkFont(size=13),
                                                     placeholder_text="如：15天")
         self.production_cycle_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row2 = ctk.CTkFrame(parent, fg_color="transparent")
         row2.pack(fill="x", pady=3)
         ctk.CTkLabel(row2, text="预定发货", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.expected_ship_entry = ctk.CTkEntry(row2, height=30, font=ctk.CTkFont(size=12),
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.expected_ship_entry = ctk.CTkEntry(row2, height=30, font=ctk.CTkFont(size=13),
                                                   placeholder_text="YYYY-MM-DD")
         self.expected_ship_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row3 = ctk.CTkFrame(parent, fg_color="transparent")
         row3.pack(fill="x", pady=3)
         ctk.CTkLabel(row3, text="生产备注", width=90, anchor="nw",
-                      font=ctk.CTkFont(size=12)).pack(side="left", pady=4)
-        self.production_remark_text = ctk.CTkTextbox(row3, height=60, font=ctk.CTkFont(size=12))
+                      font=ctk.CTkFont(size=13)).pack(side="left", pady=4)
+        self.production_remark_text = ctk.CTkTextbox(row3, height=60, font=ctk.CTkFont(size=13))
         self.production_remark_text.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
     # ── ⑤ 发货跟进环节 ────────────────────────────────
@@ -1150,46 +1150,46 @@ class PackagingForm(ctk.CTkToplevel):
         row1 = ctk.CTkFrame(parent, fg_color="transparent")
         row1.pack(fill="x", pady=3)
         ctk.CTkLabel(row1, text="发货日期", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.ship_date_entry = ctk.CTkEntry(row1, height=30, font=ctk.CTkFont(size=12),
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.ship_date_entry = ctk.CTkEntry(row1, height=30, font=ctk.CTkFont(size=13),
                                              placeholder_text="YYYY-MM-DD")
         self.ship_date_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row2 = ctk.CTkFrame(parent, fg_color="transparent")
         row2.pack(fill="x", pady=3)
         ctk.CTkLabel(row2, text="发货方式", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
+                      font=ctk.CTkFont(size=13)).pack(side="left")
         self.ship_method_var = ctk.StringVar()
         self.ship_method_combo = ctk.CTkComboBox(
             row2, variable=self.ship_method_var,
             values=self.SHIP_METHODS, width=140, height=30,
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
         )
         self.ship_method_combo.pack(side="left", padx=(8, 0))
 
         row3 = ctk.CTkFrame(parent, fg_color="transparent")
         row3.pack(fill="x", pady=3)
         ctk.CTkLabel(row3, text="物流单号", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.tracking_no_entry = ctk.CTkEntry(row3, height=30, font=ctk.CTkFont(size=12))
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.tracking_no_entry = ctk.CTkEntry(row3, height=30, font=ctk.CTkFont(size=13))
         self.tracking_no_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row4 = ctk.CTkFrame(parent, fg_color="transparent")
         row4.pack(fill="x", pady=3)
         ctk.CTkLabel(row4, text="预计到货", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
-        self.expected_arrival_entry = ctk.CTkEntry(row4, height=30, font=ctk.CTkFont(size=12),
+                      font=ctk.CTkFont(size=13)).pack(side="left")
+        self.expected_arrival_entry = ctk.CTkEntry(row4, height=30, font=ctk.CTkFont(size=13),
                                                      placeholder_text="YYYY-MM-DD")
         self.expected_arrival_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         row5 = ctk.CTkFrame(parent, fg_color="transparent")
         row5.pack(fill="x", pady=3)
         ctk.CTkLabel(row5, text="通知库房", width=90, anchor="w",
-                      font=ctk.CTkFont(size=12)).pack(side="left")
+                      font=ctk.CTkFont(size=13)).pack(side="left")
         self.notify_warehouse_var = ctk.IntVar(value=0)
         ctk.CTkCheckBox(
             row5, text="已通知库房", variable=self.notify_warehouse_var,
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             checkbox_width=20, checkbox_height=20,
         ).pack(side="left", padx=(8, 0))
 

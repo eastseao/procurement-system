@@ -17,15 +17,15 @@ class ProductBomPage(ctk.CTkFrame):
 
     def _build(self):
         # ── 顶部标题栏 ─────────────────────────────
-        header = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=0, height=64)
-        header.pack(fill="x")
+        header = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0, height=52)
+        header.pack(fill="x", padx=20, pady=(16, 8))
         header.pack_propagate(False)
 
         ctk.CTkLabel(
-            header, text="🏗  成品BOM",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+            header, text="BOM查询",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
-        ).pack(side="left", padx=24, pady=16)
+        ).pack(side="left", pady=14)
 
         # ── 筛选区 ─────────────────────────────────
         filter_frame = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=10)
@@ -38,29 +38,29 @@ class ProductBomPage(ctk.CTkFrame):
         row1 = ctk.CTkFrame(filter_inner, fg_color="transparent")
         row1.pack(fill="x", pady=(0, 6))
 
-        ctk.CTkLabel(row1, text="品名", font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+        ctk.CTkLabel(row1, text="品名", font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                      text_color=self.C["text_secondary"], width=70).pack(side="left", padx=(0, 4))
         self.product_name_entry = ctk.CTkEntry(
             row1, width=140, placeholder_text="支持模糊搜索",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             fg_color=self.C["bg"], border_color=self.C["border"],
         )
         self.product_name_entry.pack(side="left", padx=(0, 16))
 
-        ctk.CTkLabel(row1, text="成品项目号", font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+        ctk.CTkLabel(row1, text="成品项目号", font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                      text_color=self.C["text_secondary"], width=70).pack(side="left", padx=(0, 4))
         self.finished_project_no_entry = ctk.CTkEntry(
             row1, width=140,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             fg_color=self.C["bg"], border_color=self.C["border"],
         )
         self.finished_project_no_entry.pack(side="left", padx=(0, 16))
 
-        ctk.CTkLabel(row1, text="物料项目号", font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+        ctk.CTkLabel(row1, text="物料项目号", font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                      text_color=self.C["text_secondary"], width=70).pack(side="left", padx=(0, 4))
         self.material_project_no_entry = ctk.CTkEntry(
             row1, width=140,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             fg_color=self.C["bg"], border_color=self.C["border"],
         )
         self.material_project_no_entry.pack(side="left")
@@ -69,11 +69,11 @@ class ProductBomPage(ctk.CTkFrame):
         row2 = ctk.CTkFrame(filter_inner, fg_color="transparent")
         row2.pack(fill="x")
 
-        ctk.CTkLabel(row2, text="物料名称", font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+        ctk.CTkLabel(row2, text="物料名称", font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                      text_color=self.C["text_secondary"], width=70).pack(side="left", padx=(0, 4))
         self.material_name_entry = ctk.CTkEntry(
             row2, width=140, placeholder_text="支持模糊搜索",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
             fg_color=self.C["bg"], border_color=self.C["border"],
         )
         self.material_name_entry.pack(side="left")
@@ -85,7 +85,7 @@ class ProductBomPage(ctk.CTkFrame):
         self.query_btn = ctk.CTkButton(
             row3, text="🔍 查询", width=90, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
             command=self._on_query,
         )
         self.query_btn.pack(side="left", padx=(0, 8))
@@ -94,7 +94,7 @@ class ProductBomPage(ctk.CTkFrame):
             row3, text="🔄 重置", width=90, height=34,
             fg_color="transparent", text_color=self.C["primary"],
             border_color=self.C["border"], border_width=1,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
             command=self._on_reset,
         )
         self.reset_btn.pack(side="left", padx=(0, 16))
@@ -102,7 +102,7 @@ class ProductBomPage(ctk.CTkFrame):
         self.import_btn = ctk.CTkButton(
             row3, text="📥 导入Excel", width=100, height=34,
             fg_color=self.C["success"], hover_color="#7A9472",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
             command=self._on_import,
         )
         self.import_btn.pack(side="left", padx=(0, 8))
@@ -110,7 +110,7 @@ class ProductBomPage(ctk.CTkFrame):
         self.export_btn = ctk.CTkButton(
             row3, text="📤 导出Excel", width=100, height=34,
             fg_color=self.C["warning"], hover_color="#B89A5D",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
             command=self._on_export,
         )
         self.export_btn.pack(side="left")
@@ -119,7 +119,7 @@ class ProductBomPage(ctk.CTkFrame):
             row3, text="➕ 新增BOM", width=90, height=34,
             fg_color="transparent", text_color=self.C["success"],
             border_color=self.C["success"], border_width=1,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
             command=self._on_add,
         ).pack(side="right")
 
@@ -139,12 +139,12 @@ class ProductBomPage(ctk.CTkFrame):
                         fieldbackground=self.C["card"],
                         foreground=self.C["text"],
                         rowheight=32,
-                        font=("Microsoft YaHei", 11),
+                        font=("Microsoft YaHei", 9),
                         borderwidth=0)
         style.configure("Bom.Treeview.Heading",
                         background=self.C["primary"],
                         foreground="#FFFFFF",
-                        font=("Microsoft YaHei", 11, "bold"),
+                        font=("Microsoft YaHei", 9, "bold"),
                         relief="flat",
                         borderwidth=0,
                         padding=(6, 6))
@@ -332,13 +332,13 @@ class ProductBomPage(ctk.CTkFrame):
         entries = {}
         for label, key in fields:
             ctk.CTkLabel(dialog, text=label,
-                         font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                         font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                          text_color=self.C["text"]).pack(anchor="w", padx=24, pady=(8, 2))
 
             var = tk.StringVar(value=str(record.get(key, "")) if record.get(key) is not None else "")
             entry = ctk.CTkEntry(
                 dialog, textvariable=var, width=420,
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                 fg_color=self.C["bg"], border_color=self.C["border"],
             )
             entry.pack(padx=24)
@@ -374,7 +374,7 @@ class ProductBomPage(ctk.CTkFrame):
         ctk.CTkButton(
             btn_frame, text="✓ 保存", width=100, height=36,
             fg_color=self.C["success"], hover_color="#7A9472",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             command=_save,
         ).pack(side="right", padx=(8, 0))
 
@@ -382,7 +382,7 @@ class ProductBomPage(ctk.CTkFrame):
             btn_frame, text="取消", width=80, height=36,
             fg_color="transparent", text_color=self.C["text_secondary"],
             border_color=self.C["border"], border_width=1,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
             command=dialog.destroy,
         ).pack(side="right")
 
@@ -390,7 +390,7 @@ class ProductBomPage(ctk.CTkFrame):
             ctk.CTkButton(
                 btn_frame, text="🗑 删除", width=80, height=36,
                 fg_color=self.C["danger"], hover_color="#A05A5A",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                 command=lambda: self._on_delete(record["id"], dialog),
             ).pack(side="left")
 

@@ -19,12 +19,12 @@ class PurchasePage(ctk.CTkFrame):
 
     def _build(self):
         # 顶部标题栏
-        header = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=0, height=64)
-        header.pack(fill="x")
+        header = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0, height=52)
+        header.pack(fill="x", padx=20, pady=(16, 8))
         header.pack_propagate(False)
-        ctk.CTkLabel(header, text="🛒  采购垫付管理",
-                     font=ctk.CTkFont(size=20, weight="bold"),
-                     text_color=self.C["text"]).pack(side="left", padx=24, pady=16)
+        ctk.CTkLabel(header, text="采购垫付",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
+                     text_color=self.C["text"]).pack(side="left", pady=14)
 
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right", padx=16)
@@ -32,26 +32,26 @@ class PurchasePage(ctk.CTkFrame):
         self.archive_btn = ctk.CTkButton(
             btn_frame, text="📁 查看归档", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13), command=self._toggle_archive)
+            font=ctk.CTkFont(size=14), command=self._toggle_archive)
         self.archive_btn.pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="＋ 新增垫付", width=110, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._open_form).pack(side="left", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📤 导出Excel", width=110, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._export_xlsx).pack(side="right", padx=4)
 
         # ── v1.2 新增：导入xlsx 按钮 ──
         ctk.CTkButton(
             btn_frame, text="📥 导入xlsx", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._import_xlsx).pack(side="right", padx=4)
 
         # 统计栏
@@ -68,9 +68,9 @@ class PurchasePage(ctk.CTkFrame):
         ]:
             f = ctk.CTkFrame(self.stats_frame, fg_color="transparent")
             f.pack(side="left", padx=24, pady=8)
-            ctk.CTkLabel(f, text=label, font=ctk.CTkFont(size=11),
+            ctk.CTkLabel(f, text=label, font=ctk.CTkFont(size=12),
                          text_color=self.C["text_secondary"]).pack()
-            lbl = ctk.CTkLabel(f, text="0", font=ctk.CTkFont(size=18, weight="bold"),
+            lbl = ctk.CTkLabel(f, text="0", font=ctk.CTkFont(size=20, weight="bold"),
                                text_color=color)
             lbl.pack()
             self.stat_labels[key] = lbl
@@ -82,7 +82,7 @@ class PurchasePage(ctk.CTkFrame):
         filter_frame.pack_propagate(False)
 
         ctk.CTkLabel(filter_frame, text="报销状态:",
-                     font=ctk.CTkFont(size=12), text_color=self.C["text_secondary"]).pack(
+                     font=ctk.CTkFont(size=13), text_color=self.C["text_secondary"]).pack(
             side="left", padx=(16, 4), pady=12)
         self.filter_reimburse = ctk.CTkComboBox(
             filter_frame, values=["全部", "未报销", "已报销"], width=100, height=28,
@@ -91,7 +91,7 @@ class PurchasePage(ctk.CTkFrame):
         self.filter_reimburse.pack(side="left", padx=4)
 
         ctk.CTkLabel(filter_frame, text="开票状态:",
-                     font=ctk.CTkFont(size=12), text_color=self.C["text_secondary"]).pack(
+                     font=ctk.CTkFont(size=13), text_color=self.C["text_secondary"]).pack(
             side="left", padx=(12, 4))
         self.filter_invoice = ctk.CTkComboBox(
             filter_frame, values=["全部", "未开票", "已开票"], width=100, height=28,
@@ -100,7 +100,7 @@ class PurchasePage(ctk.CTkFrame):
         self.filter_invoice.pack(side="left", padx=4)
 
         ctk.CTkLabel(filter_frame, text="项目:",
-                     font=ctk.CTkFont(size=12), text_color=self.C["text_secondary"]).pack(
+                     font=ctk.CTkFont(size=13), text_color=self.C["text_secondary"]).pack(
             side="left", padx=(12, 4))
         self.filter_project = ctk.CTkComboBox(
             filter_frame, values=["全部"], width=120, height=28,
@@ -111,7 +111,7 @@ class PurchasePage(ctk.CTkFrame):
 
         ctk.CTkButton(filter_frame, text="↺ 刷新", width=60, height=28,
                       fg_color=self.C["border"], text_color=self.C["text"],
-                      hover_color="#CBD5E1", font=ctk.CTkFont(size=12),
+                      hover_color="#CBD5E1", font=ctk.CTkFont(size=13),
                       command=self._load_records).pack(side="left", padx=8)
 
         # 列表区（带滚动）
@@ -134,10 +134,10 @@ class PurchasePage(ctk.CTkFrame):
                 ("reimburse", "报销", 70), ("action", "操作", 140)]
 
         style = ttk.Style()
-        style.configure("Purchase.Treeview", font=("Microsoft YaHei", 11),
+        style.configure("Purchase.Treeview", font=("Microsoft YaHei", 9),
                          rowheight=38, background="#FFFFFF", fieldbackground="#FFFFFF",
                          foreground="#1E293B")
-        style.configure("Purchase.Treeview.Heading", font=("Microsoft YaHei", 11, "bold"),
+        style.configure("Purchase.Treeview.Heading", font=("Microsoft YaHei", 9, "bold"),
                          background="#F8FAFC", foreground="#475569", relief="flat")
         style.map("Purchase.Treeview",
                   background=[("selected", "#E8D5C4")],
@@ -552,19 +552,19 @@ class PurchaseForm(ctk.CTkToplevel):
         row0 = ctk.CTkFrame(card, fg_color="transparent")
         row0.pack(fill="x", padx=16, pady=(0, 8))
 
-        ctk.CTkLabel(row0, text="日期 *", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row0, text="日期 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).grid(row=0, column=0, padx=4, pady=4, sticky="w")
         self.date_var = tk.StringVar(value=date.today().strftime("%Y-%m-%d"))
         date_entry = ctk.CTkEntry(row0, textvariable=self.date_var, width=130, height=32)
         date_entry.grid(row=0, column=1, padx=4, pady=4, sticky="w")
 
-        ctk.CTkLabel(row0, text="经手人 *", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row0, text="经手人 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).grid(row=0, column=2, padx=(16, 4), pady=4, sticky="w")
         self.handler_var = tk.StringVar(value="纪委")
         ctk.CTkEntry(row0, textvariable=self.handler_var, width=120, height=32).grid(
             row=0, column=3, padx=4, pady=4, sticky="w")
 
-        ctk.CTkLabel(row0, text="项目归属 *", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row0, text="项目归属 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).grid(row=1, column=0, padx=4, pady=4, sticky="w")
         projects = self.db.get_projects()
         self.project_var = tk.StringVar(value=projects[0] if projects else "默认项目")
@@ -573,10 +573,10 @@ class PurchaseForm(ctk.CTkToplevel):
         self.project_combo.grid(row=1, column=1, padx=4, pady=4, sticky="w")
         ctk.CTkButton(row0, text="＋项目", width=60, height=28,
                       fg_color="#E2E8F0", text_color=self.C["text"],
-                      hover_color="#CBD5E1", font=ctk.CTkFont(size=11),
+                      hover_color="#CBD5E1", font=ctk.CTkFont(size=12),
                       command=self._add_project).grid(row=1, column=2, padx=4)
 
-        ctk.CTkLabel(row0, text="支付方式 *", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row0, text="支付方式 *", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).grid(row=1, column=3, padx=(8, 4), pady=4, sticky="w")
         self.payment_var = tk.StringVar(value="微信")
         ctk.CTkComboBox(row0, values=["微信", "支付宝", "淘宝", "银行卡", "许丹红", "宋总"],
@@ -585,19 +585,19 @@ class PurchaseForm(ctk.CTkToplevel):
 
         row1 = ctk.CTkFrame(card, fg_color="transparent")
         row1.pack(fill="x", padx=16, pady=(0, 8))
-        ctk.CTkLabel(row1, text="开票状态:", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row1, text="开票状态:", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).pack(side="left", padx=(0, 4))
         self.invoice_var = tk.StringVar(value="未开票")
         for v in ["未开票", "已开票"]:
             ctk.CTkRadioButton(row1, text=v, variable=self.invoice_var, value=v,
-                               font=ctk.CTkFont(size=12)).pack(side="left", padx=8)
+                               font=ctk.CTkFont(size=13)).pack(side="left", padx=8)
 
-        ctk.CTkLabel(row1, text="  报销状态:", font=ctk.CTkFont(size=12),
+        ctk.CTkLabel(row1, text="  报销状态:", font=ctk.CTkFont(size=13),
                      text_color=self.C["text_secondary"]).pack(side="left", padx=(16, 4))
         self.reimburse_var = tk.StringVar(value="未报销")
         for v in ["未报销", "已报销"]:
             ctk.CTkRadioButton(row1, text=v, variable=self.reimburse_var, value=v,
-                               font=ctk.CTkFont(size=12)).pack(side="left", padx=8)
+                               font=ctk.CTkFont(size=13)).pack(side="left", padx=8)
 
         # === 物料明细 ===
         self._section(card, "📦 物料明细")
@@ -605,7 +605,7 @@ class PurchaseForm(ctk.CTkToplevel):
         items_header.pack(fill="x", padx=16, pady=(0, 4))
         for txt, w in [("名称", 140), ("规格", 100), ("数量", 70), ("单价", 80),
                        ("供应商", 130), ("合计", 90), ("", 40)]:
-            ctk.CTkLabel(items_header, text=txt, width=w, font=ctk.CTkFont(size=11, weight="bold"),
+            ctk.CTkLabel(items_header, text=txt, width=w, font=ctk.CTkFont(size=12, weight="bold"),
                          text_color=self.C["text_secondary"]).pack(side="left", padx=2, pady=6)
 
         self.items_container = ctk.CTkFrame(card, fg_color="transparent")
@@ -614,21 +614,21 @@ class PurchaseForm(ctk.CTkToplevel):
 
         ctk.CTkButton(card, text="＋ 添加物料行", height=30, width=120,
                       fg_color="#E2E8F0", text_color=self.C["text"],
-                      hover_color="#CBD5E1", font=ctk.CTkFont(size=12),
+                      hover_color="#CBD5E1", font=ctk.CTkFont(size=13),
                       command=self._add_item_row).pack(anchor="w", padx=16, pady=4)
 
         total_row = ctk.CTkFrame(card, fg_color="transparent")
         total_row.pack(fill="x", padx=16, pady=4)
         ctk.CTkLabel(total_row, text="物料合计：",
-                     font=ctk.CTkFont(size=13), text_color=self.C["text_secondary"]).pack(side="left")
+                     font=ctk.CTkFont(size=14), text_color=self.C["text_secondary"]).pack(side="left")
         self.total_label = ctk.CTkLabel(total_row, text="¥ 0.00",
-                                         font=ctk.CTkFont(size=16, weight="bold"),
+                                         font=ctk.CTkFont(size=17, weight="bold"),
                                          text_color=self.C["warning"])
         self.total_label.pack(side="left")
 
         # === 备注 ===
         self._section(card, "📝 备注")
-        self.remark_text = ctk.CTkTextbox(card, height=80, font=ctk.CTkFont(size=12))
+        self.remark_text = ctk.CTkTextbox(card, height=80, font=ctk.CTkFont(size=13))
         self.remark_text.pack(fill="x", padx=16, pady=(0, 12))
 
         # === 按钮 ===
@@ -637,16 +637,16 @@ class PurchaseForm(ctk.CTkToplevel):
         if not self.view_only:
             ctk.CTkButton(btn_row, text="✓ 保存", width=120, height=38,
                           fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-                          font=ctk.CTkFont(size=14, weight="bold"),
+                          font=ctk.CTkFont(size=16, weight="bold"),
                           command=self._save).pack(side="left", padx=4)
         ctk.CTkButton(btn_row, text="✕ 关闭", width=80, height=38,
                       fg_color="#6B7280", hover_color="#4B5563",
-                      font=ctk.CTkFont(size=13), command=self.destroy).pack(side="left", padx=4)
+                      font=ctk.CTkFont(size=14), command=self.destroy).pack(side="left", padx=4)
 
     def _section(self, parent, title):
         f = ctk.CTkFrame(parent, fg_color="transparent")
         f.pack(fill="x", padx=16, pady=(12, 4))
-        ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=13, weight="bold"),
+        ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=14, weight="bold"),
                      text_color=self.C["primary"]).pack(side="left")
         ctk.CTkFrame(f, height=1, fg_color=self.C["border"]).pack(
             side="left", fill="x", expand=True, padx=(8, 0))
@@ -665,7 +665,7 @@ class PurchaseForm(ctk.CTkToplevel):
             v = tk.StringVar(value=str(data.get(fkey, "")) if data else "")
             vars_[fkey] = v
             e = ctk.CTkEntry(row, textvariable=v, width=w, height=28,
-                             placeholder_text=ph, font=ctk.CTkFont(size=11))
+                             placeholder_text=ph, font=ctk.CTkFont(size=12))
             e.pack(side="left", padx=2)
             if fkey in ("quantity", "unit_price"):
                 v.trace_add("write", lambda *a, r=row: self._recalc_row(r))
@@ -673,11 +673,11 @@ class PurchaseForm(ctk.CTkToplevel):
         total_var = tk.StringVar(value="0.00" if not data else f"{data.get('total', 0):.2f}")
         vars_["total"] = total_var
         ctk.CTkEntry(row, textvariable=total_var, width=90, height=28,
-                     state="readonly", font=ctk.CTkFont(size=11)).pack(side="left", padx=2)
+                     state="readonly", font=ctk.CTkFont(size=12)).pack(side="left", padx=2)
 
         del_btn = ctk.CTkButton(row, text="✕", width=32, height=28,
                                  fg_color="#FEE2E2", text_color=self.C["danger"],
-                                 hover_color="#FECACA", font=ctk.CTkFont(size=11),
+                                 hover_color="#FECACA", font=ctk.CTkFont(size=12),
                                  command=lambda r=row: self._remove_item_row(r))
         del_btn.pack(side="left", padx=2)
 

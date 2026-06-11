@@ -14,12 +14,18 @@ MODULE_COLORS = {
     "purchase":   "#C9A96E",   # 麦色 - 采购垫付
     "travel":     "#B56A6A",   # 暗玫瑰 - 差旅报销
     "memo":       "#7BA5B5",   # 灰蓝 - 备忘录
+    "quotation":  "#9B8AAE",   # 淡紫 - 报价单
+    "compare":    "#C4A35A",   # 琥珀 - 三方比价
+    "contract":   "#6B9080",   # 青绿 - 合同
 }
 
 # 趋势箭头配色
 TREND_UP_COLOR   = "#8FA882"   # 绿色 - 上升
 TREND_DOWN_COLOR = "#B56A6A"   # 红色 - 下降
 TREND_NEUTRAL    = "#B0A8A0"   # 灰色 - 持平
+
+
+from ui_utils import WheelScrollFrame
 
 
 class DashboardPage(ctk.CTkFrame):
@@ -49,94 +55,165 @@ class DashboardPage(ctk.CTkFrame):
         scroll_frame.pack(fill="both", expand=True)
         self._scroll_frame = scroll_frame
 
-        # ── 顶部横幅 ──────────────────────────────────
-        banner = ctk.CTkFrame(
-            scroll_frame, fg_color=self.C["primary"], corner_radius=16,
-        )
-        banner.pack(fill="x", padx=24, pady=(16, 12))
-
-        banner_inner = ctk.CTkFrame(banner, fg_color="transparent")
-        banner_inner.pack(fill="x", padx=28, pady=(22, 22))
-
-        # 左侧：标题 + 副标题
-        left_col = ctk.CTkFrame(banner_inner, fg_color="transparent")
-        left_col.pack(side="left", fill="y")
-
-        ctk.CTkLabel(
-            left_col,
-            text="看板",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=26, weight="bold"),
-            text_color="white",
-        ).pack(anchor="w")
-
-        ctk.CTkLabel(
-            left_col,
-            text="采购管理数据总览",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
-            text_color="#F5F0EB",
-        ).pack(anchor="w", pady=(4, 0))
-
-        # 右侧：更新时间
-        right_col = ctk.CTkFrame(banner_inner, fg_color="transparent")
-        right_col.pack(side="right", fill="y")
-
-        self.time_label = ctk.CTkLabel(
-            right_col,
-            text="",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12),
-            text_color="#F5F0EB",
-        )
-        self.time_label.pack(side="left")
-
         # ── 待办聚合条 ─────────────────────────────────
         self._build_todo_bar(scroll_frame)
 
-        # ── KPI 卡片区 ───────────────────────────────
-        cards_label = ctk.CTkLabel(
-            scroll_frame,
-            text="核心指标",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+        # ── 下方两列布局：左侧最新活动 + 右侧核心指标 ──
+        bottom_row = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        bottom_row.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        # 右侧列：核心指标（2×2网格，每个圆角矩形）
+        right_col = ctk.CTkFrame(bottom_row, fg_color="transparent")
+        right_col.pack(side="right", fill="both", expand=True, padx=(16, 0))
+
+        ctk.CTkLabel(
+            right_col, text="核心指标",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=17, weight="bold"),
             text_color=self.C["text"],
-        )
-        cards_label.pack(anchor="w", padx=28, pady=(8, 8))
+        ).pack(anchor="w", padx=0, pady=(0, 8))
 
-        card_grid = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-        card_grid.pack(fill="x", padx=24, pady=(0, 12))
-        # 4列等宽
-        for i in range(4):
-            card_grid.grid_columnconfigure(i, weight=1, uniform="kpi_col")
+        # ── 2×2 网格容器 ──
+        kpi_grid = ctk.CTkFrame(right_col, fg_color="transparent")
+        kpi_grid.pack(fill="both", expand=True)
 
-        # 一行5张卡片
-        self._make_kpi_card(
-            card_grid, 0, 0,
-            title="物料下单",
+        # 第一行
+        row1 = ctk.CTkFrame(kpi_grid, fg_color="transparent")
+        row1.pack(fill="x", pady=(0, 6))
+        self._make_kpi_card(row1, title="物料下单",
             keys=[("处理中", "packaging_active"), ("已完成", "packaging_done")],
-            color=MODULE_COLORS["packaging"],
-            page_key="packaging",
-        )
-        self._make_kpi_card(
-            card_grid, 0, 1,
-            title="催款记录",
+            color=MODULE_COLORS["packaging"], page_key="packaging")
+        self._make_kpi_card(row1, title="催款记录",
             keys=[(None, "collection_total")],
-            color=MODULE_COLORS["collection"],
-            page_key="collection",
-        )
-        self._make_kpi_card(
-            card_grid, 0, 2,
-            title="采购垫付",
+            color=MODULE_COLORS["collection"], page_key="collection")
+
+        # 第二行
+        row2 = ctk.CTkFrame(kpi_grid, fg_color="transparent")
+        row2.pack(fill="x", pady=(0, 6))
+        self._make_kpi_card(row2, title="采购垫付",
             keys=[("总笔数", "purchase_total"), ("待报销", "purchase_pending")],
-            color=MODULE_COLORS["purchase"],
-            page_key="purchase",
-        )
-        self._make_kpi_card(
-            card_grid, 0, 3,
-            title="差旅报销",
+            color=MODULE_COLORS["purchase"], page_key="purchase")
+        self._make_kpi_card(row2, title="差旅报销",
             keys=[("行程数", "travel_total"), ("待报销", "travel_pending")],
-            color=MODULE_COLORS["travel"],
-            page_key="travel",
+            color=MODULE_COLORS["travel"], page_key="travel")
+
+        # 左侧列：最新活动（高度扩大，显示30条）
+        left_col = ctk.CTkFrame(bottom_row, fg_color=self.C["card"],
+            corner_radius=self.C["radius_card"],
+            border_width=1, border_color=self.C["border"],
+            width=560)
+        left_col.pack(side="left", fill="both")
+        left_col.pack_propagate(False)
+
+        ctk.CTkLabel(
+            left_col, text="最新活动",
+            font=ctk.CTkFont(size=17, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(anchor="w", padx=16, pady=(12, 6))
+
+        self.activity_frame = ctk.CTkScrollableFrame(
+            left_col, fg_color="transparent",
         )
-        # ── 最近活动（占满整行）─────────────────────
-        self._build_activity_feed(scroll_frame)
+        self.activity_frame.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+
+    # ── KPI 卡片（支持网格布局：同一行内并排）────
+    def _make_kpi_card(self, parent, title, keys, color, page_key):
+        """构建 KPI 卡片（圆角矩形，支持同行并排）"""
+        card = ctk.CTkFrame(
+            parent, fg_color=color, corner_radius=14, height=100,
+        )
+        card.pack(side="left", expand=True, fill="both", padx=(0, 6))
+        card.pack_propagate(False)
+
+        card._orig_fg = color
+        card.bind("<Enter>", lambda e, c=card: self._on_card_hover_enter(c))
+        card.bind("<Leave>", lambda e, c=card: self._on_card_hover_leave(c))
+
+        # 整卡可点击
+        btn = ctk.CTkButton(
+            card, text="", fg_color="transparent",
+            hover=False, corner_radius=18,
+            command=lambda k=page_key: self._on_card_click(k),
+        )
+        btn.place(x=0, y=0, relwidth=1, relheight=1)
+        btn.bind("<Enter>", lambda e, c=card: self._on_card_hover_enter(c))
+        btn.bind("<Leave>", lambda e, c=card: self._on_card_hover_leave(c))
+
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=14, pady=(12, 8))
+
+        # 标题行
+        title_row = ctk.CTkFrame(inner, fg_color="transparent")
+        title_row.pack(fill="x")
+
+        ctk.CTkLabel(
+            title_row, text=title,
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            text_color="#FFFFFF",
+        ).pack(side="left")
+
+        # 迷你趋势图（右上角）
+        sparkline_key = f"{page_key}_sparkline"
+        sparkline_label = ctk.CTkLabel(title_row, text="", width=60, height=24)
+        sparkline_label.pack(side="right", padx=(2, 0))
+        self._sparkline_labels[sparkline_key] = sparkline_label
+
+        # 趋势标签
+        trend_label = ctk.CTkLabel(
+            title_row, text="",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+            text_color="#E8E8E8",
+        )
+        trend_label.pack(side="right", padx=(2, 0))
+        self._trend_labels[title] = trend_label
+
+        # 值区域
+        if len(keys) == 1:
+            _, key = keys[0]
+            val_label = ctk.CTkLabel(
+                inner, text="—",
+                font=ctk.CTkFont(family="Microsoft YaHei", size=29, weight="bold"),
+                text_color="#FFFFFF",
+            )
+            val_label.pack(anchor="w", pady=(4, 0))
+            unit_label = ctk.CTkLabel(
+                inner, text="",
+                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                text_color="#F0E8E0",
+            )
+            unit_label.pack(anchor="w", pady=(2, 0))
+            self._value_labels[key] = val_label
+            self._value_labels[f"{key}_unit"] = unit_label
+        else:
+            vals_row = ctk.CTkFrame(inner, fg_color="transparent")
+            vals_row.pack(fill="x", pady=(6, 0))
+            for sub, key in keys:
+                col_frame = ctk.CTkFrame(vals_row, fg_color="transparent")
+                col_frame.pack(side="left", fill="x", expand=True)
+                val_label = ctk.CTkLabel(
+                    col_frame, text="—",
+                    font=ctk.CTkFont(family="Microsoft YaHei", size=24, weight="bold"),
+                    text_color="#FFFFFF",
+                )
+                val_label.pack(anchor="w")
+                ctk.CTkLabel(
+                    col_frame, text=sub,
+                    font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                    text_color="#F0E8E0",
+                ).pack(anchor="w", pady=(1, 0))
+                self._value_labels[key] = val_label
+
+        # 底部进度条
+        progress_key = f"{page_key}_progress"
+        progress_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        progress_frame.pack(fill="x", pady=(4, 0))
+        progress_bar = ctk.CTkProgressBar(
+            progress_frame, height=3,
+            fg_color=color, progress_color="#FFFFFF", corner_radius=2,
+        )
+        progress_bar.pack(fill="x")
+        progress_bar.set(0)
+        self._progress_bars[progress_key] = progress_bar
+        self._card_refs[page_key] = card
 
     # ── 待办聚合条 ──────────────────────────────────
     def _build_todo_bar(self, parent):
@@ -165,21 +242,21 @@ class DashboardPage(ctk.CTkFrame):
         banner_inner.pack(side="left", fill="x", expand=True)
 
         self.todo_icon_label = ctk.CTkLabel(
-            banner_inner, text="📋", font=ctk.CTkFont(size=16),
+            banner_inner, text="📋", font=ctk.CTkFont(size=17),
         )
         self.todo_icon_label.pack(side="left", padx=(0, 8))
 
         self.todo_banner_label = ctk.CTkLabel(
             banner_inner,
             text="正在加载待办事项...",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
             text_color=self.C["text"],
         )
         self.todo_banner_label.pack(side="left")
 
         # 右侧展开/折叠指示器
         self.todo_arrow_label = ctk.CTkLabel(
-            self.todo_banner, text="▼", font=ctk.CTkFont(size=12),
+            self.todo_banner, text="▼", font=ctk.CTkFont(size=13),
             text_color=self.C["text_secondary"],
         )
         self.todo_arrow_label.pack(side="right")
@@ -205,7 +282,7 @@ class DashboardPage(ctk.CTkFrame):
             width=120, height=32,
             fg_color=MODULE_COLORS["packaging"],
             hover_color="#A06050",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
             corner_radius=16,  # 胶囊形状
             command=self._on_todo_click,
         )
@@ -213,122 +290,6 @@ class DashboardPage(ctk.CTkFrame):
 
         # 折叠状态
         self._todo_collapsed = True
-
-    # ── KPI 卡片（P2 优化：圆角阴影 + 迷你趋势图 + 悬停效果）────────────────────
-    def _make_kpi_card(self, parent, row, col, title, keys, color, page_key):
-        """构建 KPI 卡片（圆角矩形，无阴影）"""
-        card = ctk.CTkFrame(
-            parent, fg_color=color, corner_radius=14,
-            width=200, height=100,
-        )
-        card.grid(row=row, column=col, sticky="n", padx=6, pady=6)
-        card.grid_propagate(False)  # 固定尺寸
-
-        # 悬停效果：记录原始颜色
-        card._orig_fg = color
-        card.bind("<Enter>", lambda e, c=card: self._on_card_hover_enter(c))
-        card.bind("<Leave>", lambda e, c=card: self._on_card_hover_leave(c))
-
-        # 整卡可点击的透明覆盖按钮
-        btn = ctk.CTkButton(
-            card, text="", fg_color="transparent",
-            hover=False,
-            corner_radius=18,
-            command=lambda k=page_key: self._on_card_click(k),
-        )
-        btn.place(x=0, y=0, relwidth=1, relheight=1)
-        btn.bind("<Enter>", lambda e, c=card: self._on_card_hover_enter(c))
-        btn.bind("<Leave>", lambda e, c=card: self._on_card_hover_leave(c))
-
-        inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=14, pady=(12, 8))
-
-        # 标题行（标题 + 迷你趋势图 + 趋势箭头）
-        title_row = ctk.CTkFrame(inner, fg_color="transparent")
-        title_row.pack(fill="x")
-
-        ctk.CTkLabel(
-            title_row, text=title,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=12, weight="bold"),
-            text_color="#FFFFFF",
-        ).pack(side="left")
-
-        # 迷你趋势图（右上角）
-        sparkline_key = f"{page_key}_sparkline"
-        sparkline_label = ctk.CTkLabel(
-            title_row, text="", width=60, height=24,
-        )
-        sparkline_label.pack(side="right", padx=(2, 0))
-        self._sparkline_labels[sparkline_key] = sparkline_label
-
-        # 趋势箭头标签（箭头 + 百分比）
-        trend_label = ctk.CTkLabel(
-            title_row, text="",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=10, weight="bold"),
-            text_color="#E8E8E8",
-        )
-        trend_label.pack(side="right", padx=(2, 0))
-        self._trend_labels[title] = trend_label
-
-        # 值区域
-        if len(keys) == 1:
-            # 单值卡
-            _, key = keys[0]
-            val_label = ctk.CTkLabel(
-                inner, text="—",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=26, weight="bold"),
-                text_color="#FFFFFF",
-            )
-            val_label.pack(anchor="w", pady=(4, 0))
-            unit_label = ctk.CTkLabel(
-                inner, text="",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=11),
-                text_color="#F0E8E0",
-            )
-            unit_label.pack(anchor="w", pady=(2, 0))
-            self._value_labels[key] = val_label
-            self._value_labels[f"{key}_unit"] = unit_label
-        else:
-            # 双值卡
-            vals_row = ctk.CTkFrame(inner, fg_color="transparent")
-            vals_row.pack(fill="x", pady=(6, 0))
-
-            for sub, key in keys:
-                col_frame = ctk.CTkFrame(vals_row, fg_color="transparent")
-                col_frame.pack(side="left", fill="x", expand=True)
-
-                val_label = ctk.CTkLabel(
-                    col_frame, text="—",
-                    font=ctk.CTkFont(family="Microsoft YaHei", size=22, weight="bold"),
-                    text_color="#FFFFFF",
-                )
-                val_label.pack(anchor="w")
-
-                ctk.CTkLabel(
-                    col_frame, text=sub,
-                    font=ctk.CTkFont(family="Microsoft YaHei", size=10),
-                    text_color="#F0E8E0",
-                ).pack(anchor="w", pady=(1, 0))
-
-                self._value_labels[key] = val_label
-
-        # 底部微进度条
-        progress_key = f"{page_key}_progress"
-        progress_frame = ctk.CTkFrame(inner, fg_color="transparent")
-        progress_frame.pack(fill="x", pady=(4, 0))
-
-        progress_bar = ctk.CTkProgressBar(
-            progress_frame, height=3,
-            fg_color=color,
-            progress_color="#FFFFFF",
-            corner_radius=2,
-        )
-        progress_bar.pack(fill="x")
-        progress_bar.set(0)
-        self._progress_bars[progress_key] = progress_bar
-
-        # 存储 card 引用（用于悬停效果）
-        self._card_refs[page_key] = card
 
     # ── 卡片悬停效果 ──────────────────────────────────
     def _on_card_hover_enter(self, card):
@@ -423,7 +384,9 @@ class DashboardPage(ctk.CTkFrame):
         """加载所有 KPI 数据（含6个月趋势 + 完成率）"""
         try:
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
-            self.time_label.configure(text=f"更新时间：{now}")
+            # 更新时间标签（如果存在）
+            if hasattr(self, 'time_label'):
+                self.time_label.configure(text=f"更新时间：{now}")
 
             # 物料下单
             packaging_active = self.db.get_packagings(archived=0)
@@ -651,33 +614,8 @@ class DashboardPage(ctk.CTkFrame):
         # 更新详情列表
         self._update_todo_list(todo_details)
 
-    def _build_activity_feed(self, parent):
-        """构建最近活动动态流 UI（占满整行）"""
-        # 外层容器
-        container = ctk.CTkFrame(
-            parent, fg_color=self.C["card"],
-            corner_radius=self.C["radius_card"],
-            border_width=1, border_color=self.C["border"],
-        )
-        container.pack(fill="both", expand=True, padx=24, pady=(0, 16))
-
-        # 标题
-        ctk.CTkLabel(
-            container, text="最近活动",
-            font=ctk.CTkFont(size=15, weight="bold"),
-            text_color=self.C["text"],
-        ).pack(anchor="w", padx=16, pady=(12, 6))
-
-        # 滚动内容区域（_update_activity_feed 操作此 frame）
-        self.activity_frame = ctk.CTkScrollableFrame(
-            container,
-            fg_color="transparent",
-            height=160,
-        )
-        self.activity_frame.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-
     def _update_activity_feed(self):
-        """更新最近活动动态流"""
+        """更新最近活动动态流（30条，含报价/比价/下单/合同/催款/垫付/出差）"""
         # 清空旧内容
         for widget in self.activity_frame.winfo_children():
             widget.destroy()
@@ -685,63 +623,130 @@ class DashboardPage(ctk.CTkFrame):
         try:
             activities = []
 
-            # 从各表获取最近记录（按 created_at 倒序，合并后取前10条）
+            # 从各表获取最近记录（按 created_at 倒序，合并后取前30条）
             import sqlite3
 
-            # 物料下单
+            # 1️⃣ 报价单生成
             try:
                 cur = self.db.conn.cursor()
                 cur.execute(
-                    "SELECT material_name, created_at FROM packaging_orders "
-                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 8"
+                    "SELECT product_names, supplier_name, created_at FROM quotation_records "
+                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 30"
                 )
                 for row in cur.fetchall():
-                    name, ts = row
-                    activities.append((ts, f"📦 新增物料下单：{name or '未命名'}"))
+                    names, supplier, ts = row
+                    name_str = names[:30] + "..." if names and len(names) > 30 else (names or '未命名')
+                    sup_str = f"→{supplier}" if supplier else ""
+                    activities.append((ts, f"📋 生成报价单：{name_str} {sup_str}", "quotation"))
             except Exception:
                 pass
 
-            # 催款记录
+            # 2️⃣ 三方比价
             try:
                 cur = self.db.conn.cursor()
                 cur.execute(
-                    "SELECT supplier_name, created_at FROM collection_reminders "
-                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 8"
+                    "SELECT product_name, final_supplier, created_at FROM third_party_records "
+                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 30"
                 )
                 for row in cur.fetchall():
-                    name, ts = row
-                    activities.append((ts, f"💰 新增催款记录：{name or '未知供应商'}"))
+                    prod, supplier, ts = row
+                    prod_str = prod[:25] + "..." if prod and len(prod) > 25 else (prod or '未命名')
+                    sup_str = f"→{supplier}" if supplier else ""
+                    activities.append((ts, f"⚖️ 三方比价：{prod_str} {sup_str}", "compare"))
             except Exception:
                 pass
 
-            # 备忘录
+            # 3️⃣ 物料下单
+            try:
+                cur = self.db.conn.cursor()
+                cur.execute(
+                    "SELECT material_name, contract_status, created_at FROM packaging_orders "
+                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 30"
+                )
+                for row in cur.fetchall():
+                    name, status, ts = row
+                    name_str = name[:20] + "..." if name and len(name) > 20 else (name or '未命名')
+                    activities.append((ts, f"📦 新增物料下单：{name_str}", "packaging"))
+                    # 如果有合同状态变更也记录
+                    if status and status not in ("", None):
+                        activities.append((ts, f"📝 合同状态变更为：{status}", "contract"))
+            except Exception:
+                pass
+
+            # 4️⃣ 催款记录
+            try:
+                cur = self.db.conn.cursor()
+                cur.execute(
+                    "SELECT supplier_name, amount_due, status, created_at FROM collection_reminders "
+                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 30"
+                )
+                for row in cur.fetchall():
+                    name, amount, status, ts = row
+                    name_str = name[:18] + "..." if name and len(name) > 18 else (name or '未知供应商')
+                    amt_str = f" ¥{amount:.0f}" if amount else ""
+                    activities.append((ts, f"💰 新增催款记录：{name_str}{amt_str}", "collection"))
+            except Exception:
+                pass
+
+            # 5️⃣ 采购垫付
+            try:
+                cur = self.db.conn.cursor()
+                cur.execute(
+                    "SELECT project, handler, created_at FROM purchase "
+                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 30"
+                )
+                for row in cur.fetchall():
+                    project, handler, ts = row
+                    proj_str = project or '默认项目'
+                    handler_str = f"({handler})" if handler else ""
+                    activities.append((ts, f"💳 采购垫付：{proj_str} {handler_str}", "purchase"))
+            except Exception:
+                pass
+
+            # 6️⃣ 出差新增记录
+            try:
+                cur = self.db.conn.cursor()
+                cur.execute(
+                    "SELECT reason, destination, created_at FROM travel "
+                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 30"
+                )
+                for row in cur.fetchall():
+                    reason, dest, ts = row
+                    reason_str = reason[:15] + "..." if reason and len(reason) > 15 else (reason or '出差')
+                    dest_str = dest or ''
+                    activities.append((ts, f"✈️ 出差记录：{reason_str} →{dest_str}", "travel"))
+            except Exception:
+                pass
+
+            # 7️⃣ 备忘录
             try:
                 cur = self.db.conn.cursor()
                 cur.execute(
                     "SELECT content, created_at FROM memos "
-                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 8"
+                    "WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 30"
                 )
                 for row in cur.fetchall():
                     content, ts = row
-                    activities.append((ts, f"📝 新增备忘录：{content or '无标题'}"))
+                    content_str = content[:25] + "..." if content and len(content) > 25 else (content or '无标题')
+                    activities.append((ts, f"📝 新增备忘录：{content_str}", "memo"))
             except Exception:
                 pass
 
-            # 按时间倒序排列，取前10条
-            activities.sort(reverse=True)
-            recent = activities[:10]
+            # 按时间倒序排列，取前30条
+            activities.sort(key=lambda x: x[0], reverse=True)
+            recent = activities[:30]
 
             if not recent:
                 ctk.CTkLabel(
                     self.activity_frame, text="暂无最近活动",
-                    font=ctk.CTkFont(size=12),
+                    font=ctk.CTkFont(size=13),
                     text_color=self.C["text_secondary"],
                 ).pack(anchor="w", pady=8)
                 return
 
-            for ts, desc in recent:
+            for ts, desc, mod_key in recent:
                 item = ctk.CTkFrame(self.activity_frame, fg_color="transparent")
-                item.pack(fill="x", pady=3)
+                item.pack(fill="x", pady=2)
 
                 # 时间
                 try:
@@ -750,12 +755,21 @@ class DashboardPage(ctk.CTkFrame):
                 except Exception:
                     time_str = str(ts)[:16] if ts else "未知时间"
 
+                # 模块颜色圆点
+                dot_color = MODULE_COLORS.get(mod_key, "#B0A8A0")
+                ctk.CTkLabel(
+                    item, text="●", width=12,
+                    font=ctk.CTkFont(size=10),
+                    text_color=dot_color,
+                    anchor="center",
+                ).pack(side="left", padx=(0, 2))
+
                 ctk.CTkLabel(
                     item, text=time_str, width=65,
                     font=ctk.CTkFont(size=11, weight="bold"),
-                    text_color=MODULE_COLORS["travel"],
+                    text_color=self.C["text_secondary"],
                     anchor="w",
-                ).pack(side="left", padx=(0, 8))
+                ).pack(side="left", padx=(0, 6))
 
                 ctk.CTkLabel(
                     item, text=desc,
@@ -811,7 +825,7 @@ class DashboardPage(ctk.CTkFrame):
             text_label = ctk.CTkLabel(
                 item_frame,
                 text=f"{todo['icon']} {todo['text']}",
-                font=ctk.CTkFont(family="Microsoft YaHei", size=12),
+                font=ctk.CTkFont(family="Microsoft YaHei", size=13),
                 text_color=self.C["text"],
                 anchor="w",
             )

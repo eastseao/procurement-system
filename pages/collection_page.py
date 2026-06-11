@@ -29,15 +29,15 @@ class CollectionPage(ctk.CTkFrame):
 
     def _build(self):
         # ── 顶部标题栏 ─────────────────────────────────
-        header = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=0, height=64)
-        header.pack(fill="x")
+        header = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0, height=52)
+        header.pack(fill="x", padx=20, pady=(16, 8))
         header.pack_propagate(False)
 
         ctk.CTkLabel(
-            header, text="💰  催款记录",
-            font=ctk.CTkFont(size=20, weight="bold"),
+            header, text="被催款记录",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=self.C["text"],
-        ).pack(side="left", padx=24, pady=16)
+        ).pack(side="left", pady=14)
 
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right", padx=16)
@@ -45,21 +45,21 @@ class CollectionPage(ctk.CTkFrame):
         ctk.CTkButton(
             btn_frame, text="＋ 新增记录", width=110, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._open_form,
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📤 导出Excel", width=100, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._export_xlsx,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📥 导入xlsx", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._import_xlsx,
         ).pack(side="right", padx=4)
 
@@ -72,12 +72,12 @@ class CollectionPage(ctk.CTkFrame):
         inner.pack(side="left", fill="y", padx=16)
 
         ctk.CTkLabel(inner, text="模糊搜索：",
-                     font=ctk.CTkFont(size=12), text_color=self.C["text_secondary"]).pack(
+                     font=ctk.CTkFont(size=13), text_color=self.C["text_secondary"]).pack(
             side="left", pady=12)
         self.kw_var = tk.StringVar()
         kw_entry = ctk.CTkEntry(
             inner, textvariable=self.kw_var, width=200, height=32,
-            font=ctk.CTkFont(size=12), placeholder_text="供应商/联系人/微信…",
+            font=ctk.CTkFont(size=13), placeholder_text="供应商/联系人/微信…",
         )
         kw_entry.pack(side="left", padx=(4, 16))
         kw_entry.bind("<Return>", lambda e: self._do_search())
@@ -85,20 +85,20 @@ class CollectionPage(ctk.CTkFrame):
         ctk.CTkButton(
             inner, text="查询", width=70, height=32,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=self._do_search,
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
             inner, text="重置", width=60, height=32,
             fg_color=self.C["border"], text_color=self.C["text"],
-            hover_color="#CBD5E1", font=ctk.CTkFont(size=12),
+            hover_color="#CBD5E1", font=ctk.CTkFont(size=13),
             command=self._reset,
         ).pack(side="left", padx=4)
 
         self.count_lbl = ctk.CTkLabel(
             search_frame, text="",
-            font=ctk.CTkFont(size=12), text_color=self.C["text_secondary"],
+            font=ctk.CTkFont(size=13), text_color=self.C["text_secondary"],
         )
         self.count_lbl.pack(side="right", padx=20)
 
@@ -117,10 +117,10 @@ class CollectionPage(ctk.CTkFrame):
 
         style = ttk.Style()
         style.configure("Collection.Treeview",
-                        font=("Microsoft YaHei", 11), rowheight=36,
+                        font=("Microsoft YaHei", 9), rowheight=36,
                         background="#FFFFFF", fieldbackground="#FFFFFF", foreground="#1E293B")
         style.configure("Collection.Treeview.Heading",
-                        font=("Microsoft YaHei", 11, "bold"),
+                        font=("Microsoft YaHei", 9, "bold"),
                         background="#F8FAFC", foreground="#475569", relief="flat")
         style.map("Collection.Treeview",
                   background=[("selected", "#E8D5C4")],
@@ -410,13 +410,13 @@ class CollectionForm(ctk.CTkToplevel):
             f = ctk.CTkFrame(parent, fg_color="transparent")
             f.pack(fill="x", padx=16, pady=4)
             ctk.CTkLabel(f, text=label, width=90, anchor="w",
-                         font=ctk.CTkFont(size=12),
+                         font=ctk.CTkFont(size=13),
                          text_color=self.C["text_secondary"]).pack(side="left")
             widget_fn(f, **kw)
 
         def entry(parent, var, ph=""):
             e = ctk.CTkEntry(parent, textvariable=var, height=32,
-                             font=ctk.CTkFont(size=12), placeholder_text=ph)
+                             font=ctk.CTkFont(size=13), placeholder_text=ph)
             e.pack(side="left", fill="x", expand=True, padx=(8, 0))
 
         # ── 字段 ──
@@ -441,16 +441,16 @@ class CollectionForm(ctk.CTkToplevel):
         notify_frame = ctk.CTkFrame(card, fg_color="transparent")
         notify_frame.pack(fill="x", padx=16, pady=8)
         ctk.CTkCheckBox(notify_frame, text="已通知内勤", variable=self.v_internal,
-                        font=ctk.CTkFont(size=13),
+                        font=ctk.CTkFont(size=14),
                         checkbox_width=20, checkbox_height=20).pack(side="left", padx=8)
         ctk.CTkCheckBox(notify_frame, text="已通知经理", variable=self.v_manager,
-                        font=ctk.CTkFont(size=13),
+                        font=ctk.CTkFont(size=14),
                         checkbox_width=20, checkbox_height=20).pack(side="left", padx=8)
 
         self._section(card, "📝 备注")
         remark_frame = ctk.CTkFrame(card, fg_color="transparent")
         remark_frame.pack(fill="x", padx=16, pady=4)
-        self.remark_text = ctk.CTkTextbox(remark_frame, height=80, font=ctk.CTkFont(size=12))
+        self.remark_text = ctk.CTkTextbox(remark_frame, height=80, font=ctk.CTkFont(size=13))
         self.remark_text.pack(fill="x")
 
         # 按钮
@@ -458,16 +458,16 @@ class CollectionForm(ctk.CTkToplevel):
         btn_row.pack(fill="x", padx=16, pady=12)
         ctk.CTkButton(btn_row, text="✓ 保存", width=120, height=38,
                       fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-                      font=ctk.CTkFont(size=14, weight="bold"),
+                      font=ctk.CTkFont(size=16, weight="bold"),
                       command=self._save).pack(side="left", padx=4)
         ctk.CTkButton(btn_row, text="✕ 关闭", width=80, height=38,
                       fg_color="#6B7280", hover_color="#4B5563",
-                      font=ctk.CTkFont(size=13), command=self.destroy).pack(side="left", padx=4)
+                      font=ctk.CTkFont(size=14), command=self.destroy).pack(side="left", padx=4)
 
     def _section(self, parent, title):
         f = ctk.CTkFrame(parent, fg_color="transparent")
         f.pack(fill="x", padx=16, pady=(12, 4))
-        ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=13, weight="bold"),
+        ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=14, weight="bold"),
                      text_color=self.C["primary"]).pack(side="left")
         ctk.CTkFrame(f, height=1, fg_color=self.C["border"]).pack(
             side="left", fill="x", expand=True, padx=(8, 0))

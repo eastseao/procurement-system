@@ -26,12 +26,12 @@ class QueryPage(ctk.CTkFrame):
 
     def _build(self):
         # 顶部标题栏
-        header = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=0, height=64)
-        header.pack(fill="x")
+        header = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0, height=52)
+        header.pack(fill="x", padx=20, pady=(16, 8))
         header.pack_propagate(False)
-        ctk.CTkLabel(header, text="物料查询",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
-                     text_color=self.C["text"]).pack(side="left", padx=24, pady=16)
+        ctk.CTkLabel(header, text="台账查询",
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
+                     text_color=self.C["text"]).pack(side="left", pady=14)
 
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right", padx=16)
@@ -40,26 +40,26 @@ class QueryPage(ctk.CTkFrame):
             btn_frame, text="🗑  清除数据", width=100, height=34,
             fg_color="#FEE2E2", text_color=self.C["danger"],
             hover_color="#FECACA",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
             command=self._clear_data
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📂  导入CSV", width=110, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             command=self._import_csv
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
             btn_frame, text="📤 导出Excel", width=110, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             command=self._export_xlsx
         ).pack(side="right", padx=4)
 
         self.import_status = ctk.CTkLabel(
-            btn_frame, text="未导入数据", font=ctk.CTkFont(family="Microsoft YaHei", size=11),
+            btn_frame, text="未导入数据", font=ctk.CTkFont(family="Microsoft YaHei", size=12),
             text_color=self.C["text_secondary"]
         )
         self.import_status.pack(side="right", padx=12)
@@ -75,38 +75,38 @@ class QueryPage(ctk.CTkFrame):
         row1.pack(fill="x", pady=4)
 
         # 年份下拉（不再实时触发查询，改为手动点查询）
-        ctk.CTkLabel(row1, text="年份：", font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+        ctk.CTkLabel(row1, text="年份：", font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                      text_color=self.C["text_secondary"]).pack(side="left")
         self.year_var = tk.StringVar(value="全部")
         self.year_combo = ctk.CTkComboBox(
             row1, values=["全部"], variable=self.year_var,
             width=100, height=34,
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14),
         )
         self.year_combo.pack(side="left", padx=(4, 18))
 
         # 供应商
-        ctk.CTkLabel(row1, text="供应商：", font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+        ctk.CTkLabel(row1, text="供应商：", font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                      text_color=self.C["text_secondary"]).pack(side="left")
         self.supplier_var = tk.StringVar()
         ctk.CTkEntry(row1, textvariable=self.supplier_var, width=150, height=34,
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                      placeholder_text="模糊搜索…").pack(side="left", padx=(4, 18))
 
         # 物料名称
-        ctk.CTkLabel(row1, text="物料名称：", font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+        ctk.CTkLabel(row1, text="物料名称：", font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                      text_color=self.C["text_secondary"]).pack(side="left")
         self.name_var = tk.StringVar()
         ctk.CTkEntry(row1, textvariable=self.name_var, width=160, height=34,
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                      placeholder_text="模糊搜索…").pack(side="left", padx=(4, 18))
 
         # 物料项目号
-        ctk.CTkLabel(row1, text="物料项目号：", font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+        ctk.CTkLabel(row1, text="物料项目号：", font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                      text_color=self.C["text_secondary"]).pack(side="left")
         self.item_no_var = tk.StringVar()
         item_entry = ctk.CTkEntry(row1, textvariable=self.item_no_var, width=140, height=34,
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                     font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                      placeholder_text="精准匹配…")
         item_entry.pack(side="left", padx=(4, 6))
         item_entry.bind("<Return>", lambda e: self._apply_filter())
@@ -114,7 +114,7 @@ class QueryPage(ctk.CTkFrame):
         ctk.CTkButton(
             row1, text="查询", width=66, height=34,
             fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             command=self._apply_filter
         ).pack(side="left", padx=(0, 6))
 
@@ -122,7 +122,7 @@ class QueryPage(ctk.CTkFrame):
                       fg_color="#F1F5F9", text_color=self.C["text"],
                       hover_color="#E2E8F0",
                       border_width=1, border_color=self.C["border"],
-                      font=ctk.CTkFont(family="Microsoft YaHei", size=13),
+                      font=ctk.CTkFont(family="Microsoft YaHei", size=14),
                       command=self._reset_filter).pack(side="left")
 
         # 统计栏
@@ -131,13 +131,13 @@ class QueryPage(ctk.CTkFrame):
         stats_frame.pack_propagate(False)
         self.result_count_lbl = ctk.CTkLabel(
             stats_frame, text="请设置筛选条件后点击「查询」",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             text_color=self.C["text_secondary"]
         )
         self.result_count_lbl.pack(side="left", padx=20, pady=12)
         self.result_total_lbl = ctk.CTkLabel(
             stats_frame, text="",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             text_color=self.C["warning"]
         )
         self.result_total_lbl.pack(side="left", padx=20)
@@ -172,7 +172,7 @@ class QueryPage(ctk.CTkFrame):
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("Query.Treeview",
-                         font=("Microsoft YaHei", 11),
+                         font=("Microsoft YaHei", 9),
                          rowheight=36,
                          background="#FFFFFF",
                          fieldbackground="#FFFFFF",
@@ -180,7 +180,7 @@ class QueryPage(ctk.CTkFrame):
                          borderwidth=0,
                          relief="flat")
         style.configure("Query.Treeview.Heading",
-                         font=("Microsoft YaHei", 11, "bold"),
+                         font=("Microsoft YaHei", 9, "bold"),
                          background="#F8FAFC",
                          foreground="#475569",
                          relief="flat",

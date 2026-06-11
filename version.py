@@ -12,7 +12,7 @@ import threading
 import ssl
 from datetime import datetime
 
-__version__ = "2.0.4"
+__version__ = "2.2.0"
 __version_date__ = "2026-06-11"
 
 # ═══════════════════════════════════════════════════════

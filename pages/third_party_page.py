@@ -43,27 +43,27 @@ class ThirdPartyPage(ctk.CTkFrame):
         C = self.C
 
         # ── 顶部工具栏 ─────────────────────────────
-        toolbar = ctk.CTkFrame(self, fg_color="transparent", height=44)
-        toolbar.pack(fill="x", padx=24, pady=(12, 4))
+        toolbar = ctk.CTkFrame(self, fg_color="transparent", height=52)
+        toolbar.pack(fill="x", padx=20, pady=(16, 8))
         toolbar.pack_propagate(False)
 
         ctk.CTkLabel(
-            toolbar, text="📊  比价",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
+            toolbar, text="比价单生成",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=C["text"],
-        ).pack(side="left", pady=6)
+        ).pack(side="left", pady=14)
 
         self.stats_label = ctk.CTkLabel(
             toolbar, text="",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             text_color=C.get("text_secondary", "#5D5D5D"),
         )
         self.stats_label.pack(side="right", padx=(0, 12), pady=6)
 
         ctk.CTkButton(
-            toolbar, text="📤 导出Excel", width=120, height=34,
+            toolbar, text="导出Excel 📤", width=120, height=34,
             fg_color=C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._export_excel,
         ).pack(side="right", pady=6)
 
@@ -83,18 +83,18 @@ class ThirdPartyPage(ctk.CTkFrame):
         time_frame = ctk.CTkFrame(self.outer_scroll, fg_color="transparent")
         time_frame.pack(fill="x", padx=24, pady=(4, 6))
 
-        ctk.CTkLabel(time_frame, text="申请时间：", font=ctk.CTkFont(size=13),
+        ctk.CTkLabel(time_frame, text="申请时间：", font=ctk.CTkFont(size=14),
                      text_color=C["text"]).pack(side="left")
         self.date_entry = ctk.CTkEntry(time_frame, width=150, height=32,
-                                       font=ctk.CTkFont(size=13),
+                                       font=ctk.CTkFont(size=14),
                                        placeholder_text="YYYY-MM-DD")
         self.date_entry.pack(side="left", padx=(8, 0))
         self.date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
 
-        ctk.CTkLabel(time_frame, text="  最终做货供应商：", font=ctk.CTkFont(size=13),
+        ctk.CTkLabel(time_frame, text="  最终做货供应商：", font=ctk.CTkFont(size=14),
                      text_color=C["text"]).pack(side="left", padx=(20, 0))
         self.final_supplier_entry = ctk.CTkEntry(time_frame, width=180, height=32,
-                                                  font=ctk.CTkFont(size=13),
+                                                  font=ctk.CTkFont(size=14),
                                                   placeholder_text="输入供应商名称")
         self.final_supplier_entry.pack(side="left", padx=(8, 0))
 
@@ -105,58 +105,63 @@ class ThirdPartyPage(ctk.CTkFrame):
 
         ctk.CTkLabel(
             form_card, text="📦 产品信息",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=C["text"],
         ).pack(anchor="w", padx=16, pady=(12, 6))
 
-        # 品名 + 项目号
+        # ── 产品信息：一行四列（品名+项目号+材质结构+规格尺寸）──
         r1 = ctk.CTkFrame(form_card, fg_color="transparent")
         r1.pack(fill="x", padx=16, pady=2)
-        ctk.CTkLabel(r1, text="品名*", width=60, anchor="w",
-                     font=ctk.CTkFont(size=13)).pack(side="left")
-        self.name_entry = ctk.CTkEntry(r1, height=32, font=ctk.CTkFont(size=13),
-                                       placeholder_text="输入产品名称")
-        self.name_entry.pack(side="left", fill="x", expand=True, padx=(8, 16))
-        ctk.CTkLabel(r1, text="项目号", width=50, anchor="w",
-                     font=ctk.CTkFont(size=13)).pack(side="left")
-        self.item_no_entry = ctk.CTkEntry(r1, width=160, height=32, font=ctk.CTkFont(size=13))
-        self.item_no_entry.pack(side="left", padx=(8, 0))
 
-        # 材质结构 + 规格尺寸
-        r2 = ctk.CTkFrame(form_card, fg_color="transparent")
-        r2.pack(fill="x", padx=16, pady=2)
-        ctk.CTkLabel(r2, text="材质结构", width=60, anchor="w",
-                     font=ctk.CTkFont(size=13)).pack(side="left")
-        self.material_entry = ctk.CTkEntry(r2, height=32, font=ctk.CTkFont(size=13),
+        # 品名（宽度减半，固定宽度）
+        ctk.CTkLabel(r1, text="品名*", width=45, anchor="w",
+                     font=ctk.CTkFont(size=14)).pack(side="left")
+        self.name_entry = ctk.CTkEntry(r1, width=140, height=32,
+                                       font=ctk.CTkFont(size=14),
+                                       placeholder_text="输入产品名称")
+        self.name_entry.pack(side="left", padx=(4, 12))
+
+        # 项目号
+        ctk.CTkLabel(r1, text="项目号", width=45, anchor="w",
+                     font=ctk.CTkFont(size=14)).pack(side="left")
+        self.item_no_entry = ctk.CTkEntry(r1, width=120, height=32, font=ctk.CTkFont(size=14))
+        self.item_no_entry.pack(side="left", padx=(4, 12))
+
+        # 材质结构
+        ctk.CTkLabel(r1, text="材质结构", width=55, anchor="w",
+                     font=ctk.CTkFont(size=14)).pack(side="left")
+        self.material_entry = ctk.CTkEntry(r1, width=120, height=32, font=ctk.CTkFont(size=14),
                                            placeholder_text="输入材质结构")
-        self.material_entry.pack(side="left", fill="x", expand=True, padx=(8, 16))
-        ctk.CTkLabel(r2, text="规格尺寸", width=50, anchor="w",
-                     font=ctk.CTkFont(size=13)).pack(side="left")
-        self.spec_entry = ctk.CTkEntry(r2, width=160, height=32, font=ctk.CTkFont(size=13))
-        self.spec_entry.pack(side="left", padx=(8, 0))
+        self.material_entry.pack(side="left", padx=(4, 12))
+
+        # 规格尺寸
+        ctk.CTkLabel(r1, text="规格尺寸", width=55, anchor="w",
+                     font=ctk.CTkFont(size=14)).pack(side="left")
+        self.spec_entry = ctk.CTkEntry(r1, width=120, height=32, font=ctk.CTkFont(size=14))
+        self.spec_entry.pack(side="left", padx=(4, 0))
 
         # ── 供应商名称 ─────────────────────────────
         sup_frame = ctk.CTkFrame(form_card, fg_color="transparent")
         sup_frame.pack(fill="x", padx=16, pady=(8, 2))
 
         ctk.CTkLabel(sup_frame, text="供应商", width=60, anchor="w",
-                     font=ctk.CTkFont(size=12, weight="bold"),
+                     font=ctk.CTkFont(size=13, weight="bold"),
                      text_color=C.get("primary", "#D4917A")).pack(side="left")
-        self.supplier1_entry = ctk.CTkEntry(sup_frame, height=32, font=ctk.CTkFont(size=13),
+        self.supplier1_entry = ctk.CTkEntry(sup_frame, height=32, font=ctk.CTkFont(size=14),
                                             placeholder_text="供应商1名称")
         self.supplier1_entry.pack(side="left", fill="x", expand=True, padx=(4, 8))
 
         ctk.CTkLabel(sup_frame, text="供应商", width=60, anchor="w",
-                     font=ctk.CTkFont(size=12, weight="bold"),
+                     font=ctk.CTkFont(size=13, weight="bold"),
                      text_color="#6B8FA3").pack(side="left")
-        self.supplier2_entry = ctk.CTkEntry(sup_frame, height=32, font=ctk.CTkFont(size=13),
+        self.supplier2_entry = ctk.CTkEntry(sup_frame, height=32, font=ctk.CTkFont(size=14),
                                             placeholder_text="供应商2名称")
         self.supplier2_entry.pack(side="left", fill="x", expand=True, padx=(4, 8))
 
         ctk.CTkLabel(sup_frame, text="供应商", width=60, anchor="w",
-                     font=ctk.CTkFont(size=12, weight="bold"),
+                     font=ctk.CTkFont(size=13, weight="bold"),
                      text_color="#9B7EBD").pack(side="left")
-        self.supplier3_entry = ctk.CTkEntry(sup_frame, height=32, font=ctk.CTkFont(size=13),
+        self.supplier3_entry = ctk.CTkEntry(sup_frame, height=32, font=ctk.CTkFont(size=14),
                                             placeholder_text="供应商3名称")
         self.supplier3_entry.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
@@ -169,16 +174,16 @@ class ThirdPartyPage(ctk.CTkFrame):
         qp_header = ctk.CTkFrame(form_card, fg_color="transparent")
         qp_header.pack(fill="x", padx=16, pady=(10, 0))
 
-        ctk.CTkLabel(qp_header, text="数量", font=ctk.CTkFont(size=12, weight="bold"),
+        ctk.CTkLabel(qp_header, text="数量", font=ctk.CTkFont(size=13, weight="bold"),
                      text_color=C.get("text_secondary", "#8B7355"),
                      width=80, anchor="w").pack(side="left")
-        ctk.CTkLabel(qp_header, text="供应商1价格", font=ctk.CTkFont(size=12, weight="bold"),
+        ctk.CTkLabel(qp_header, text="供应商1价格", font=ctk.CTkFont(size=13, weight="bold"),
                      text_color=C.get("primary", "#D4917A"),
                      width=100, anchor="center").pack(side="left")
-        ctk.CTkLabel(qp_header, text="供应商2价格", font=ctk.CTkFont(size=12, weight="bold"),
+        ctk.CTkLabel(qp_header, text="供应商2价格", font=ctk.CTkFont(size=13, weight="bold"),
                      text_color="#6B8FA3",
                      width=100, anchor="center").pack(side="left")
-        ctk.CTkLabel(qp_header, text="供应商3价格", font=ctk.CTkFont(size=12, weight="bold"),
+        ctk.CTkLabel(qp_header, text="供应商3价格", font=ctk.CTkFont(size=13, weight="bold"),
                      text_color="#9B7EBD",
                      width=100, anchor="center").pack(side="left")
         ctk.CTkLabel(qp_header, text="", width=44).pack(side="left")  # spacer for delete button
@@ -194,14 +199,14 @@ class ThirdPartyPage(ctk.CTkFrame):
 
         ctk.CTkButton(
             action_frame, text="＋ 添加数量", width=110, height=30,
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             fg_color="#6B7280", hover_color="#4B5563",
             command=self._add_qp_row,
         ).pack(side="left")
 
         self.edit_hint_label = ctk.CTkLabel(
             action_frame, text="",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=13),
             text_color=C.get("warning", "#E4A36A"),
         )
         self.edit_hint_label.pack(side="left", padx=(16, 0))
@@ -209,14 +214,14 @@ class ThirdPartyPage(ctk.CTkFrame):
         ctk.CTkButton(
             action_frame, text="✕ 清空表单", width=100, height=36,
             fg_color="#9CA3AF", hover_color="#6B7280",
-            font=ctk.CTkFont(size=13),
+            font=ctk.CTkFont(size=14),
             command=self._clear_form,
         ).pack(side="right", padx=(8, 0))
 
         self.save_btn = ctk.CTkButton(
             action_frame, text="💾 保存记录", width=100, height=36,
             fg_color=C["primary"], hover_color=C["primary_hover"],
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=14, weight="bold"),
             command=self._confirm_record,
         )
         self.save_btn.pack(side="right")
@@ -229,11 +234,11 @@ class ThirdPartyPage(ctk.CTkFrame):
         preview_header.pack(fill="x", padx=24, pady=(8, 4))
         ctk.CTkLabel(
             preview_header, text="📋 比价记录",
-            font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
             text_color=C["text"],
         ).pack(side="left")
 
-        self._supplier_labels = [ctk.CTkLabel(preview_header, text="", font=ctk.CTkFont(size=11),
+        self._supplier_labels = [ctk.CTkLabel(preview_header, text="", font=ctk.CTkFont(size=12),
                                                text_color=C.get("text_secondary", "#8B7355"))
                                  for _ in range(3)]
         for lbl in self._supplier_labels:
@@ -255,7 +260,7 @@ class ThirdPartyPage(ctk.CTkFrame):
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TP.Treeview",
-                        font=("Microsoft YaHei", 10),
+                        font=("Microsoft YaHei", 8),
                         rowheight=34,
                         background="#FFFFFF",
                         fieldbackground="#FFFFFF",
@@ -263,7 +268,7 @@ class ThirdPartyPage(ctk.CTkFrame):
                         borderwidth=0,
                         relief="flat")
         style.configure("TP.Treeview.Heading",
-                        font=("Microsoft YaHei", 10, "bold"),
+                        font=("Microsoft YaHei", 8, "bold"),
                         background="#F8FAFC",
                         foreground="#475569",
                         relief="flat",
@@ -397,25 +402,25 @@ class ThirdPartyPage(ctk.CTkFrame):
         row_frame.pack(fill="x", pady=2)
 
         qty_entry = ctk.CTkEntry(row_frame, width=80, height=30,
-                                 font=ctk.CTkFont(size=12),
+                                 font=ctk.CTkFont(size=13),
                                  placeholder_text="数量")
         qty_entry.pack(side="left")
 
         p1_entry = ctk.CTkEntry(row_frame, width=100, height=30,
-                                font=ctk.CTkFont(size=12),
+                                font=ctk.CTkFont(size=13),
                                 placeholder_text="供应商1价格",
                                 fg_color=self.C["card"],
                                 border_color=self.C.get("primary", "#D4917A"))
         p1_entry.pack(side="left", padx=(4, 0))
 
         p2_entry = ctk.CTkEntry(row_frame, width=100, height=30,
-                                font=ctk.CTkFont(size=12),
+                                font=ctk.CTkFont(size=13),
                                 placeholder_text="供应商2价格",
                                 border_color="#6B8FA3")
         p2_entry.pack(side="left", padx=(4, 0))
 
         p3_entry = ctk.CTkEntry(row_frame, width=100, height=30,
-                                font=ctk.CTkFont(size=12),
+                                font=ctk.CTkFont(size=13),
                                 placeholder_text="供应商3价格",
                                 border_color="#9B7EBD")
         p3_entry.pack(side="left", padx=(4, 0))
@@ -423,7 +428,7 @@ class ThirdPartyPage(ctk.CTkFrame):
         del_btn = ctk.CTkButton(
             row_frame, text="✕", width=30, height=30,
             fg_color="#B56A6A", hover_color="#A85A5A",
-            font=ctk.CTkFont(size=11, weight="bold"),
+            font=ctk.CTkFont(size=12, weight="bold"),
             command=lambda rf=row_frame: self._remove_qp_row(rf),
         )
         del_btn.pack(side="left", padx=(6, 0))
@@ -643,9 +648,9 @@ class ThirdPartyPage(ctk.CTkFrame):
             ws = wb["比价"]
 
             # 模板字体：数据行 24号宋体，表头 22号加粗宋体
-            data_font = Font(name="宋体", size=24)
-            header_font = Font(name="宋体", size=22, bold=True)
-            date_font = Font(name="宋体", size=22)
+            data_font = Font(name="宋体", size=23)
+            header_font = Font(name="宋体", size=20, bold=True)
+            date_font = Font(name="宋体", size=20)
             thin = Side(style="thin")
             border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
             center = Alignment(horizontal="center", vertical="center", wrap_text=True)
