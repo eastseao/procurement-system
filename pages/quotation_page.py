@@ -35,54 +35,24 @@ class QuotationPage(ctk.CTkFrame):
         self._load_data()
 
     # ═══════════════════════════════════════════════
-    #  UI 构建
+    #  UI 构建（按照合同生成页面排版）
     # ═══════════════════════════════════════════════
 
     def _build_ui(self):
+        # ── 顶部工具栏 ──
         toolbar = ctk.CTkFrame(self, fg_color="transparent", height=56)
         toolbar.pack(fill="x", padx=24, pady=(16, 8))
         toolbar.pack_propagate(False)
 
-        # ── 左侧：标题 ──
         ctk.CTkLabel(
             toolbar, text="📋  产品报价单",
             font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
             text_color=self.C["text"],
         ).pack(side="left", pady=12)
 
-        # ── 左侧：供应商检索（文本框 + 下拉选择）──
-        search_frame = ctk.CTkFrame(toolbar, fg_color="transparent")
-        search_frame.pack(side="left", padx=(16, 8), pady=10)
-
-        self.search_entry = ctk.CTkEntry(
-            search_frame, width=180, height=34,
-            placeholder_text="🔍 输入品名/项目号检索...",
-            font=ctk.CTkFont(size=12),
-        )
-        self.search_entry.pack(side="left")
-        self.search_entry.bind("<Return>", self._on_search)
-        self.search_entry.bind("<KeyRelease>", self._on_search_key)
-
-        # 供应商下拉选择框（ttk.Combobox 嵌入 CTkFrame）
-        self.supplier_combo = ttk.Combobox(
-            search_frame, width=16, height=6, state="readonly",
-            font=("Microsoft YaHei", 11),
-        )
-        self.supplier_combo.pack(side="left", padx=(4, 0))
-        self.supplier_combo.bind("<<ComboboxSelected>>", self._on_supplier_selected)
-
-        ctk.CTkButton(
-            search_frame, text="检索", width=50, height=34,
-            fg_color="#6B8FA3", hover_color="#5A7A93",
-            font=ctk.CTkFont(size=12),
-            command=self._on_search,
-        ).pack(side="left", padx=(4, 0))
-
-        # ── 右侧：按钮组（从左到右：+添加产品 → 需方配置 → +|供方配置 → 导出报价单）──
         btn_frame = ctk.CTkFrame(toolbar, fg_color="transparent")
         btn_frame.pack(side="right", pady=8)
 
-        # 最右侧：导出
         ctk.CTkButton(
             btn_frame, text="📤 导出报价单", width=120, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
@@ -90,7 +60,6 @@ class QuotationPage(ctk.CTkFrame):
             command=self._export_quotation,
         ).pack(side="right", padx=4)
 
-        # 供方配置（带 + 图标前缀）
         ctk.CTkButton(
             btn_frame, text="+ 供方配置", width=110, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
@@ -98,7 +67,6 @@ class QuotationPage(ctk.CTkFrame):
             command=self._open_supplier_config,
         ).pack(side="right", padx=4)
 
-        # 需方配置
         ctk.CTkButton(
             btn_frame, text="⚙ 需方配置", width=100, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
@@ -106,109 +74,420 @@ class QuotationPage(ctk.CTkFrame):
             command=self._open_config,
         ).pack(side="right", padx=4)
 
-        # + 添加产品（最左侧）
+        # ── 供应商检索栏（参照合同生成页面）──
+        sb = ctk.CTkFrame(self, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        sb.pack(fill="x", padx=24, pady=(0, 8))
+
+        ctk.CTkLabel(
+            sb, text="🔍  供应商检索：",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=13, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(side="left", padx=(16, 6), pady=12)
+
+        # 下拉选择框
+        self.supplier_combo = ttk.Combobox(
+            sb, width=18, height=6, state="readonly",
+            font=("Microsoft YaHei", 11),
+        )
+        self.supplier_combo.pack(side="left", padx=(0, 10), pady=12)
+        self.supplier_combo.bind("<<ComboboxSelected>>", self._on_supplier_selected)
+
+        ctk.CTkLabel(sb, text="或输入：", font=ctk.CTkFont(size=12),
+                      text_color="#9CA3AF").pack(side="left", padx=(0, 6), pady=12)
+
+        self.search_entry = ctk.CTkEntry(
+            sb, width=160, height=32,
+            placeholder_text="输入简称/全称...", font=ctk.CTkFont(size=12),
+        )
+        self.search_entry.pack(side="left", padx=(0, 10), pady=12)
+        self.search_entry.bind("<KeyRelease>", self._on_search_key)
+        self.search_entry.bind("<Return>", self._on_search)
+
         ctk.CTkButton(
-            btn_frame, text="＋ 添加产品", width=110, height=34,
-            fg_color=self.C["danger"], hover_color="#A85A5A",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            command=self._open_form,
+            sb, text="检索", width=60, height=30,
+            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
+            font=ctk.CTkFont(size=12),
+            command=self._on_search,
+        ).pack(side="left", padx=(0, 10), pady=12)
+
+        # 确认按钮
+        self.confirm_btn = ctk.CTkButton(
+            sb, text="确认", width=80, height=30,
+            fg_color=self.C["success"], hover_color="#7A9A6E",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self._on_confirm_supplier,
+        )
+        self.confirm_btn.pack(side="left", padx=(0, 10), pady=12)
+
+        # 重置按钮
+        ctk.CTkButton(
+            sb, text="重置", width=80, height=30,
+            fg_color="#6B7280", hover_color="#4B5563",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self._on_reset_all,
+        ).pack(side="left", padx=(0, 10), pady=12)
+
+        # 确认状态标签
+        self.confirm_status_label = ctk.CTkLabel(sb, text="", font=ctk.CTkFont(size=11),
+                                               text_color="#9CA3AF")
+        self.confirm_status_label.pack(side="left", padx=(0, 10), pady=12)
+
+        # ── 滚动区域 ──
+        scroll = ctk.CTkScrollableFrame(self, fg_color="transparent", corner_radius=0)
+        scroll.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+
+        self._build_product_info(scroll)
+        self._build_tier_price(scroll)
+        self._build_product_table(scroll)
+
+    # ═══════════════════════════════════════════════
+    #  产品信息板块（内联表单）
+    # ═══════════════════════════════════════════════
+
+    def _build_product_info(self, parent):
+        """产品信息板块 — 内联表单"""
+        card = ctk.CTkFrame(parent, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        card.pack(fill="x", pady=(0, 12))
+
+        # 标题行
+        hf = ctk.CTkFrame(card, fg_color="transparent")
+        hf.pack(fill="x", padx=20, pady=(14, 8))
+        ctk.CTkLabel(
+            hf, text="📦  产品信息",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(side="left")
+
+        # 表单区域
+        form = ctk.CTkFrame(card, fg_color="transparent")
+        form.pack(fill="x", padx=20, pady=(0, 14))
+
+        fields = [
+            ("产品名称 *", "product_name", 200),
+            ("项目号", "item_no", 200),
+            ("材质工艺/描述", "material_process", 280),
+            ("产品尺寸", "product_size", 200),
+            ("供货周期", "supply_cycle", 200),
+            ("发货箱规", "carton_spec", 200),
+            ("单位", "unit", 100),
+        ]
+
+        self.inline_entries = {}
+        for label, key, width in fields:
+            row = ctk.CTkFrame(form, fg_color="transparent")
+            row.pack(fill="x", pady=3)
+            ctk.CTkLabel(
+                row, text=label,
+                width=120, anchor="e",
+                font=ctk.CTkFont(size=12),
+                text_color=self.C.get("text_secondary", "#8B7355"),
+            ).pack(side="left", padx=(0, 8))
+            e = ctk.CTkEntry(row, width=width, height=30, font=ctk.CTkFont(size=12))
+            e.pack(side="left")
+            if key == "unit":
+                e.insert(0, "PCS")
+            self.inline_entries[key] = e
+
+        # 按钮栏
+        bf = ctk.CTkFrame(card, fg_color="transparent")
+        bf.pack(fill="x", padx=20, pady=(0, 14))
+        ctk.CTkButton(
+            bf, text="💾 保存产品", width=100, height=32,
+            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self._save_inline_product,
+        ).pack(side="right", padx=4)
+        ctk.CTkButton(
+            bf, text="🗑 清空", width=80, height=32,
+            fg_color="#9CA3AF", hover_color="#6B7280",
+            font=ctk.CTkFont(size=12),
+            command=self._clear_inline_form,
         ).pack(side="right", padx=4)
 
-        # 统计栏（含全选/清选）
-        stats = ctk.CTkFrame(self, fg_color="transparent", height=28)
-        stats.pack(fill="x", padx=24, pady=(0, 4))
-        self.stats_label = ctk.CTkLabel(
-            stats, text="", font=ctk.CTkFont(size=12),
-            text_color=self.C.get("text_secondary", "#5D5D5D"),
-        )
-        self.stats_label.pack(side="left")
+    # ═══════════════════════════════════════════════
+    #  阶梯价格板块（内联表单）
+    # ═══════════════════════════════════════════════
 
-        # 全选 / 清空按钮放在统计栏右侧
-        sel_btn_frame = ctk.CTkFrame(stats, fg_color="transparent")
-        sel_btn_frame.pack(side="right")
+    def _build_tier_price(self, parent):
+        """阶梯价格板块 — 内联表单，支持多行阶梯"""
+        card = ctk.CTkFrame(parent, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        card.pack(fill="x", pady=(0, 12))
+
+        # 标题行 + 添加阶梯按钮
+        hf = ctk.CTkFrame(card, fg_color="transparent")
+        hf.pack(fill="x", padx=20, pady=(14, 8))
+        ctk.CTkLabel(
+            hf, text="💰  阶梯价格",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(side="left")
+
         ctk.CTkButton(
-            sel_btn_frame, text="✓ 全选", width=65, height=26,
+            hf, text="＋ 添加阶梯", width=100, height=28,
+            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
+            font=ctk.CTkFont(size=11),
+            command=self._add_inline_tier_row,
+        ).pack(side="right")
+
+        # 阶梯行容器
+        self.inline_tier_frame = ctk.CTkFrame(card, fg_color="transparent")
+        self.inline_tier_frame.pack(fill="x", padx=20, pady=(0, 14))
+
+        # 表头
+        hdr = ctk.CTkFrame(self.inline_tier_frame, fg_color=self.C.get("sidebar", "#EEE5DA"), corner_radius=4)
+        hdr.pack(fill="x", pady=(0, 4))
+        for h_text, w in [("最低数量", 140), ("最高数量(留空=无限)", 180), ("操作", 60)]:
+            ctk.CTkLabel(
+                hdr, text=h_text, width=w, anchor="center",
+                font=ctk.CTkFont(size=11, weight="bold"),
+                text_color=self.C["text"],
+            ).pack(side="left", padx=4, pady=4)
+
+        # 提示文字
+        hint = ctk.CTkLabel(
+            self.inline_tier_frame,
+            text="💡 填入阶梯数量后保存产品，如：100 | 500-999 | ≥1000",
+            font=ctk.CTkFont(size=11), text_color=self.C.get("text_secondary", "#8B7355"),
+        )
+        hint.pack(anchor="w", pady=(2, 6))
+
+        # 默认添加一行
+        self.inline_tier_rows = []
+        self._add_inline_tier_row()
+
+    def _add_inline_tier_row(self):
+        """在阶梯价格区域新增一行输入框"""
+        row = ctk.CTkFrame(self.inline_tier_frame, fg_color="transparent")
+        row.pack(fill="x", pady=2)
+
+        min_entry = ctk.CTkEntry(row, width=140, height=30, font=ctk.CTkFont(size=12),
+                                  placeholder_text="最低数量")
+        min_entry.pack(side="left", padx=4)
+        max_entry = ctk.CTkEntry(row, width=180, height=30, font=ctk.CTkFont(size=12),
+                                  placeholder_text="留空=无上限")
+        max_entry.pack(side="left", padx=4)
+
+        def _remove():
+            row.destroy()
+            self.inline_tier_rows = [tr for tr in self.inline_tier_rows if tr["row"] is not row]
+
+        del_btn = ctk.CTkButton(row, text="✕", width=40, height=30,
+                                fg_color=self.C["danger"], hover_color="#A85A5A",
+                                font=ctk.CTkFont(size=12), command=_remove)
+        del_btn.pack(side="left", padx=4)
+
+        tier_data = {"row": row, "min": min_entry, "max": max_entry}
+        self.inline_tier_rows.append(tier_data)
+
+    # ═══════════════════════════════════════════════
+    #  产品列表表格板块
+    # ═══════════════════════════════════════════════
+
+    def _build_product_table(self, parent):
+        """产品列表表格板块 — Treeview + 勾选列 + 统计信息"""
+        card = ctk.CTkFrame(parent, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        card.pack(fill="both", expand=True, pady=(0, 16))
+
+        # 标题行 + 操作按钮
+        hf = ctk.CTkFrame(card, fg_color="transparent")
+        hf.pack(fill="x", padx=20, pady=(14, 8))
+        ctk.CTkLabel(
+            hf, text="📋  产品列表",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(side="left")
+        ctk.CTkButton(
+            hf, text="＋ 添加产品", width=100, height=28,
+            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
+            font=ctk.CTkFont(size=11),
+            command=lambda: self._open_form(),
+        ).pack(side="right")
+        ctk.CTkButton(
+            hf, text="全选", width=60, height=28,
             fg_color="#6B8FA3", hover_color="#5A7A93",
             font=ctk.CTkFont(size=11),
             command=self._select_all,
-        ).pack(side="left", padx=2)
+        ).pack(side="right", padx=(0, 6))
         ctk.CTkButton(
-            sel_btn_frame, text="✗ 清选", width=65, height=26,
-            fg_color="#9CA3AF", hover_color="#7A8A9A",
+            hf, text="清选", width=60, height=28,
+            fg_color="#9CA3AF", hover_color="#6B7280",
             font=ctk.CTkFont(size=11),
             command=self._deselect_all,
-        ).pack(side="left", padx=2)
+        ).pack(side="right", padx=(0, 6))
 
         # 表格 - 阴影分层：z1 → z2 → z3
-        z1_frame = ctk.CTkFrame(self, fg_color="#E8E2D9", corner_radius=16)
-        z1_frame.pack(fill="both", expand=True, padx=24, pady=(0, 16))
+        z1_frame = ctk.CTkFrame(card, fg_color="#E8E2D9", corner_radius=16)
+        z1_frame.pack(fill="both", expand=True, padx=4, pady=4)
 
-        z2_frame = ctk.CTkFrame(z1_frame, fg_color="#F2F0EB", corner_radius=12)
-        z2_frame.pack(fill="both", expand=True, padx=4, pady=4)
+        z2_frame = ctk.CTkFrame(z1_frame, fg_color="#F5F0EB", corner_radius=12)
+        z2_frame.pack(fill="both", expand=True, padx=2, pady=2)
 
-        table_frame = ctk.CTkFrame(z2_frame, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
-        table_frame.pack(fill="both", expand=True, padx=4, pady=4)
+        z3_frame = ctk.CTkFrame(z2_frame, fg_color="white", corner_radius=8)
+        z3_frame.pack(fill="both", expand=True, padx=2, pady=2)
 
-        # 列定义：首列为勾选列 ☐/☑
-        columns = ("导出", "序号", "项目号", "产品名称", "产品尺寸", "材质/工艺", "供货周期", "发货箱规", "阶梯价格", "操作")
+        # Treeview 列定义
+        columns = ("idx", "item_no", "name", "size", "process", "cycle", "carton", "tiers", "action")
+        col_widths = [40, 80, 160, 100, 140, 80, 100, 130, 90]
 
+        self.tree = ttk.Treeview(z3_frame, columns=columns, show="headings", height=8,
+                                  selectmode="browse")
+
+        # 配置样式
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure("Quotation.Treeview",
-                         font=("Microsoft YaHei", 11),
-                         rowheight=36,
-                         background="#FFFFFF",
-                         fieldbackground="#FFFFFF",
-                         foreground="#1E293B",
-                         borderwidth=0,
-                         relief="flat")
-        style.configure("Quotation.Treeview.Heading",
-                        font=("Microsoft YaHei", 11, "bold"),
-                        background="#F8FAFC",
-                        foreground="#475569",
-                        relief="flat",
-                        borderwidth=0)
-        style.map("Quotation.Treeview",
-                  background=[("selected", "#E8D5C4")],
-                  foreground=[("selected", "#4A3728")])
-        style.layout("Quotation.Treeview", [
-            ("Treeview.treearea", {"sticky": "nswe"})
-        ])
+        style.configure("QuotationTreeview",
+                        background="white",
+                        foreground="#333333",
+                        fieldbackground="white",
+                        font=("Microsoft YaHei", 10),
+                        rowheight=34)
+        style.configure("QuotationTreeview.Heading",
+                        background="#F0EAE0",
+                        foreground="#4A4A4A",
+                        font=("Microsoft YaHei", 10, "bold"))
+        style.map("QuotationTreeview",
+                  background=[("selected", "#D4C4B0")],
+                  foreground=[("selected", "#000000")])
+        style.layout("QuotationTreeview", [("QuotationTreeview.treearea", {"sticky": "nswe"})])
 
-        tree_wrap = tk.Frame(table_frame, bg="#FFFFFF")
-        tree_wrap.pack(fill="both", expand=True, padx=8, pady=8)
+        self.tree.configure(style="QuotationTreeview")
 
-        self.tree = ttk.Treeview(
-            tree_wrap, style="Quotation.Treeview",
-            columns=columns, show="headings", height=15, selectmode="browse"
-        )
+        headings = ["序号", "项目号", "产品名称", "尺寸", "材质/工艺描述", "供货周期", "发货箱规", "阶梯价格", "操作"]
+        for col, heading, w in zip(columns, headings, col_widths):
+            self.tree.heading(col, text=heading)
+            self.tree.column(col, width=w, minwidth=w, anchor="center" if col != "action" else "w")
 
-        widths = {"导出": 45, "序号": 45, "项目号": 75, "产品名称": 130, "产品尺寸": 95,
-                  "材质/工艺": 150, "供货周期": 75, "发货箱规": 75, "阶梯价格": 200, "操作": 80}
-        for col in columns:
-            self.tree.heading(col, text=col)
-            anchor = "center"
-            if col in ("产品名称", "材质/工艺", "阶梯价格"):
-                anchor = "w"
-            self.tree.column(col, width=widths.get(col, 100), minwidth=35, stretch=True, anchor=anchor)
-
-        vsb = ttk.Scrollbar(tree_wrap, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(tree_wrap, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-
-        self.tree.pack(side="left", fill="both", expand=True)
-        vsb.pack(side="right", fill="y")
-        hsb.pack(side="bottom", fill="x")
-
-        self.tree.tag_configure("odd", background="#F8FAFC")
-        self.tree.tag_configure("even", background="#FFFFFF")
-        self.tree.tag_configure("hover", background="#FFF2E6")
-        self.tree.tag_configure("checked", background="#E8F5E9")
-
+        # 绑定事件
         self.tree.bind("<Double-1>", self._on_row_double_click)
-        self.tree.bind("<Button-1>", self._on_row_click)
+        self.tree.bind("<ButtonRelease-1>", self._on_row_click)
         self.tree.bind("<Motion>", self._on_hover)
         self.tree.bind("<Leave>", self._on_leave)
+
+        # 滚动条
+        vsb = ttk.Scrollbar(z3_frame, orient="vertical", command=self.tree.yview)
+        hsb = ttk.Scrollbar(z3_frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+        z3_frame.grid_rowconfigure(0, weight=1)
+        z3_frame.grid_columnconfigure(0, weight=1)
+
+        # Tag 配置颜色
+        self.tree.tag_configure("checked", background="#E8F0E8")
+        self.tree.tag_configure("odd", background="#FAFAF8")
+        self.tree.tag_configure("even", background="#FFFFFF")
+        self.tree.tag_configure("hover", background="#F0E0D0")
+
+        # 底部统计标签
+        stats_frame = ctk.CTkFrame(card, fg_color="transparent")
+        stats_frame.pack(fill="x", padx=20, pady=(8, 14))
+        self.stats_label = ctk.CTkLabel(
+            stats_frame, text="加载中...",
+            font=ctk.CTkFont(size=11),
+            text_color=self.C.get("text_secondary", "#8B7355"),
+        )
+        self.stats_label.pack(side="left")
+
+    # ═══════════════════════════════════════════════
+    #  内联表单操作（保存/清空/确认/重置）
+    # ═══════════════════════════════════════════════
+
+    def _save_inline_product(self):
+        """从内联表单保存产品（含阶梯价格）到数据库"""
+        name = (self.inline_entries.get("product_name").get().strip()
+                if "product_name" in self.inline_entries else "")
+        if not name:
+            messagebox.showerror("错误", "请输入产品名称")
+            return
+
+        # 收集产品基本信息
+        product_data = {
+            "item_no": self.inline_entries.get("item_no", ctk.CTkEntry()).get().strip(),
+            "product_name": name,
+            "product_size": self.inline_entries.get("product_size", ctk.CTkEntry()).get().strip(),
+            "material_process": self.inline_entries.get("material_process", ctk.CTkEntry()).get().strip(),
+            "supply_cycle": self.inline_entries.get("supply_cycle", ctk.CTkEntry()).get().strip(),
+            "carton_spec": self.inline_entries.get("carton_spec", ctk.CTkEntry()).get().strip(),
+            "unit": self.inline_entries.get("unit", ctk.CTkEntry()).get().strip() or "PCS",
+        }
+
+        # 收集阶梯价格
+        valid_tiers = []
+        for tr in getattr(self, "inline_tier_rows", []):
+            try:
+                min_qty = int(tr["min"].get().strip())
+            except (ValueError, TypeError):
+                min_qty = 0
+            max_val = tr["max"].get().strip()
+            max_qty = int(max_val) if max_val else None
+            valid_tiers.append({"min_qty": min_qty, "max_qty": max_qty})
+
+        try:
+            pid = self.db.save_quotation_product(product_data)
+            for t in valid_tiers:
+                self.db.save_quotation_tier({**t, "product_id": pid})
+            messagebox.showinfo("成功", f"产品「{name}」已保存")
+            self._clear_inline_form()
+            self._load_data()
+        except Exception as e:
+            import traceback
+            messagebox.showerror("保存失败", f"{e}\n\n{traceback.format_exc()}")
+
+    def _clear_inline_form(self):
+        """清空内联所有表单字段"""
+        if hasattr(self, "inline_entries"):
+            for key, entry in self.inline_entries.items():
+                entry.delete(0, "end")
+                if key == "unit":
+                    entry.insert(0, "PCS")
+        # 清空阶梯价格行（保留一行空白）
+        if hasattr(self, "inline_tier_frame") and hasattr(self, "inline_tier_rows"):
+            for tr in self.inline_tier_rows:
+                if tr["row"].winfo_exists():
+                    tr["row"].destroy()
+            self.inline_tier_rows = []
+            self._add_inline_tier_row()
+
+    def _on_confirm_supplier(self):
+        """确认按钮：将选中的供应商信息注入当前上下文"""
+        selected = self.supplier_combo.get()
+        if not selected or selected.startswith("—"):
+            # 尝试用文本框内容
+            keyword = self.search_entry.get().strip()
+            if not keyword:
+                messagebox.showwarning("提示", "请先选择或检索供应商，再点击确认")
+                return
+            selected = keyword
+
+        # 存储到实例变量供导出时使用
+        self._pending_supplier = {"supplier_name": selected}
+        self.confirm_status_label.configure(
+            text=f"✅ 已确认：{selected}",
+            text_color=self.C.get("success", "#6B9E6B"),
+            font=ctk.CTkFont(size=11, weight="bold"),
+        )
+
+    def _on_reset_all(self):
+        """重置所有状态：清空表单、重置下拉框和检索"""
+        self._clear_inline_form()
+        # 重置供应商下拉框
+        if hasattr(self, "supplier_combo"):
+            vals = self.supplier_combo.cget("values")
+            if vals:
+                self.supplier_combo.current(0)
+        # 清空检索框
+        if hasattr(self, "search_entry"):
+            self.search_entry.delete(0, "end")
+        # 重置确认状态
+        if hasattr(self, "confirm_status_label"):
+            self.confirm_status_label.configure(text="", text_color="#9CA3AF",
+                                                font=ctk.CTkFont(size=11))
+        # 清除待定供应商
+        self._pending_supplier = {}
+        # 刷新全部数据
+        self._load_data()
 
     # ═══════════════════════════════════════════════
     #  数据加载与表格渲染（带勾选状态）
