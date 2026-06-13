@@ -53,19 +53,19 @@ class ThirdPartyPage(ctk.CTkFrame):
             text_color=C["text"],
         ).pack(side="left", pady=14)
 
+        ctk.CTkButton(
+            toolbar, text="导出", width=80, height=34,
+            fg_color=C["success"], hover_color="#7A9A6E",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._export_excel, corner_radius=20,
+        ).pack(side="right", pady=6)
+
         self.stats_label = ctk.CTkLabel(
             toolbar, text="",
             font=ctk.CTkFont(size=13),
             text_color=C.get("text_secondary", "#5D5D5D"),
         )
         self.stats_label.pack(side="right", padx=(0, 12), pady=6)
-
-        ctk.CTkButton(
-            toolbar, text="导出Excel 📤", width=120, height=34,
-            fg_color=C["success"], hover_color="#7A9A6E",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            command=self._export_excel, corner_radius=20,
-        ).pack(side="right", pady=6)
 
         # ── 外层滚动容器 ───────────────────────────
         self.outer_scroll = ctk.CTkScrollableFrame(

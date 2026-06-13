@@ -51,21 +51,21 @@ class SupplierPage(ctk.CTkFrame):
         btn_frame.pack(side="right", padx=16)
 
         ctk.CTkButton(
-            btn_frame, text="＋ 新增供应商", width=120, height=34,
+            btn_frame, text="新增", width=80, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._open_form, corner_radius=20,
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
-            btn_frame, text="📤 导出Excel", width=110, height=34,
+            btn_frame, text="导出", width=80, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._export_xlsx, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
-            btn_frame, text="📥 导入xlsx", width=100, height=34,
+            btn_frame, text="导入", width=80, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=14),
             command=self._import_xlsx, corner_radius=20,

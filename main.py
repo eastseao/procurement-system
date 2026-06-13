@@ -404,19 +404,70 @@ class App(ctk.CTk):
         except Exception:
             pass
 
-    # ── 窗口缩放方法 ──
-    def _start_resize(self, event):
-        self._resize_start_x = event.x_root
-        self._resize_start_y = event.y_root
-        self._resize_start_w = self.winfo_width()
-        self._resize_start_h = self.winfo_height()
+    # ── 窗口边缘缩放方法 ──
+    def _get_resize_edge(self, x, y):
+        """检测鼠标所在窗口边缘"""
+        m = self._resize_margin
+        w, h = self.winfo_width(), self.winfo_height()
+        edge = ""
+        if x <= m: edge += "w"
+        elif x >= w - m: edge += "e"
+        if y <= m: edge += "n"
+        elif y >= h - m: edge += "s"
+        return edge if edge else None
 
-    def _on_resize(self, event):
+    def _on_resize_motion(self, event):
+        if self._is_maximized:
+            return
+        edge = self._get_resize_edge(event.x, event.y)
+        cursors = {
+            "n": "sb_v_double_arrow", "s": "sb_v_double_arrow",
+            "e": "sb_h_double_arrow", "w": "sb_h_double_arrow",
+            "ne": "top_right_corner", "nw": "top_left_corner",
+            "se": "bottom_right_corner", "sw": "bottom_left_corner",
+        }
+        self.config(cursor=cursors.get(edge, "arrow"))
+        self._resize_edge = edge
+
+    def _on_resize_press(self, event):
+        if self._resize_edge:
+            self._resize_start_x = event.x_root
+            self._resize_start_y = event.y_root
+            self._resize_start_w = self.winfo_width()
+            self._resize_start_h = self.winfo_height()
+            self._resize_start_winx = self.winfo_x()
+            self._resize_start_winy = self.winfo_y()
+            return "break"  # 阻止标题栏拖动
+
+    def _on_resize_drag(self, event):
+        if not self._resize_edge:
+            return  # 不是缩放，让标题栏拖动处理
         dx = event.x_root - self._resize_start_x
         dy = event.y_root - self._resize_start_y
-        new_w = max(1100, self._resize_start_w + dx)
-        new_h = max(700, self._resize_start_h + dy)
-        self.geometry(f"{new_w}x{new_h}")
+        edge = self._resize_edge
+        new_w = self._resize_start_w
+        new_h = self._resize_start_h
+        new_x = self._resize_start_winx
+        new_y = self._resize_start_winy
+
+        if "e" in edge:
+            new_w = max(1100, self._resize_start_w + dx)
+        if "s" in edge:
+            new_h = max(700, self._resize_start_h + dy)
+        if "w" in edge:
+            new_w = max(1100, self._resize_start_w - dx)
+            new_x = self._resize_start_winx + (self._resize_start_w - new_w)
+        if "n" in edge:
+            new_h = max(700, self._resize_start_h - dy)
+            new_y = self._resize_start_winy + (self._resize_start_h - new_h)
+
+        self.geometry(f"{new_w}x{new_h}+{new_x}+{new_y}")
+
+    def _on_resize_release(self, event):
+        """缩放结束时更新圆角区域"""
+        if self._resize_edge:
+            self._resize_edge = None
+            self.after(100, self._set_rounded_corners)
 
     # ── 窗口拖动方法 ──
     def _start_drag(self, event):
@@ -664,8 +715,7 @@ class App(ctk.CTk):
 
     def _auto_update(self, asset_url, latest_version):
         """
-        自动更新：下载新版本 EXE，创建更新脚本，重启应用。
-        在后台线程下载，主线程显示进度。
+        自动更新：下载安装包，静默安装覆盖原文件。
         """
         import tempfile
         import urllib.request
@@ -691,14 +741,12 @@ class App(ctk.CTk):
         ).pack(pady=(24, 8))
 
         status_var = tk.StringVar(value="准备下载...")
-        status_label = tk.Label(
+        tk.Label(
             prog_dialog, textvariable=status_var,
             font=("Microsoft YaHei", 11),
             fg="#8B7355", bg="#FFFAF5",
-        )
-        status_label.pack(pady=(0, 12))
+        ).pack(pady=(0, 12))
 
-        # 进度条（ttk）
         import tkinter.ttk as ttk
         style = ttk.Style()
         style.theme_use("clam")
@@ -713,10 +761,7 @@ class App(ctk.CTk):
         progress_bar.start(10)
 
         temp_dir = tempfile.gettempdir()
-        exe_path = sys.executable  # 当前 EXE 完整路径
-        exe_dir = os.path.dirname(exe_path)
-        exe_name = os.path.basename(exe_path)
-        new_exe_path = os.path.join(temp_dir, "procurement_update.exe")
+        setup_path = os.path.join(temp_dir, "采购助手_Setup.exe")
 
         def _download_worker():
             try:
@@ -734,7 +779,7 @@ class App(ctk.CTk):
                     progress_bar.configure(mode="determinate", maximum=100)
                     self.after(0, lambda: progress_bar.configure(maximum=100))
 
-                    with open(new_exe_path, "wb") as f:
+                    with open(setup_path, "wb") as f:
                         while True:
                             block = resp.read(block_size)
                             if not block:
@@ -746,25 +791,16 @@ class App(ctk.CTk):
                                 self.after(0, lambda v=pct: progress_bar.configure(value=v))
                                 self.after(0, lambda v=pct: status_var.set(f"已下载 {v}%"))
 
-                # 下载完成，创建更新脚本
-                self.after(0, lambda: status_var.set("下载完成，正在准备更新..."))
+                # 下载完成，静默安装
+                self.after(0, lambda: status_var.set("下载完成，正在安装更新..."))
                 self.after(0, lambda: progress_bar.configure(value=100))
 
-                # 写入更新批处理脚本
-                bat_path = os.path.join(temp_dir, "procurement_update.bat")
-                bat_content = f"""@echo off
-timeout /t 2 /nobreak > nul
-taskkill /f /im "{exe_name}" > nul 2>&1
-timeout /t 1 /nobreak > nul
-copy /Y "{new_exe_path}" "{exe_path}" > nul
-start "" "{exe_path}"
-del "{new_exe_path}" > nul 2>&1
-"""
-                with open(bat_path, "w", encoding="gbk") as f:
-                    f.write(bat_content)
+                # 获取当前安装目录
+                exe_dir = os.path.dirname(sys.executable)
 
+                # 启动安装程序（静默模式）
                 self.after(0, lambda: prog_dialog.destroy())
-                self.after(100, lambda: self._run_updater(bat_path))
+                self.after(100, lambda: self._run_updater(setup_path, exe_dir))
 
             except Exception as e:
                 self.after(0, lambda: prog_dialog.destroy())
@@ -774,19 +810,20 @@ del "{new_exe_path}" > nul 2>&1
 
         threading.Thread(target=_download_worker, daemon=True).start()
 
-    def _run_updater(self, bat_path):
-        """启动更新脚本并退出当前应用"""
+    def _run_updater(self, setup_path, exe_dir):
+        """启动安装程序（静默模式）并退出当前应用"""
         try:
             import subprocess
-            # 用 cmd /c start 启动批处理脚本（不阻塞）
+            # 静默安装到当前目录，覆盖所有文件，不显示界面
+            cmd = f'"{setup_path}" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="{exe_dir}"'
             subprocess.Popen(
-                f'cmd /c start "" "{bat_path}"',
+                cmd,
                 shell=True,
                 creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
             )
         except Exception:
             pass
-        # 退出当前应用
+        # 退出当前应用（安装程序会覆盖并重启）
         self._quit_app()
 
     def _set_titlebar_color(self, color_hex):
@@ -861,59 +898,66 @@ del "{new_exe_path}" > nul 2>&1
             corner_radius=5,
             command=self._toggle_sidebar,
         )
-        self._title_collapse_btn.pack(side="left", padx=(16, 2), pady=7)
+        self._title_collapse_btn.pack(side="left", padx=(19, 2), pady=7)
 
         self._title_bar.bind("<Button-1>", self._start_drag)
         self._title_bar.bind("<B1-Motion>", self._on_drag)
 
-        # ── 窗口控制按钮（右侧，Apple 风格圆点）──
-        _dot_size = 14
-        _dot_radius = 7
-        _dot_pady = 13  # (40 - 14) / 2
+        # ── 窗口控制按钮（右侧，Win11 风格）──
+        _ctrl_btn_w = 46
+        _ctrl_btn_h = 32
+        _ctrl_pady = 4  # (40 - 32) / 2
 
-        # 关闭 — 红色
+        # 关闭 — 悬停红色
         self._btn_close = ctk.CTkButton(
-            self._title_bar, text="",
-            width=_dot_size, height=_dot_size,
-            fg_color="#FF5F57",
-            hover_color="#FF7B75",
-            corner_radius=_dot_radius,
+            self._title_bar, text="✕",
+            width=_ctrl_btn_w, height=_ctrl_btn_h,
+            font=ctk.CTkFont(size=14),
+            fg_color="transparent",
+            text_color=COLORS["sidebar_text"],
+            hover_color="#E81123",
+            corner_radius=6,
             command=self._close_window,
         )
-        self._btn_close.pack(side="right", padx=(4, 10), pady=_dot_pady)
+        self._btn_close.pack(side="right", padx=(0, 6), pady=_ctrl_pady)
 
-        # 最大化 — 绿色
+        # 最大化
         self._btn_maximize = ctk.CTkButton(
-            self._title_bar, text="",
-            width=_dot_size, height=_dot_size,
-            fg_color="#28C840",
-            hover_color="#4DD865",
-            corner_radius=_dot_radius,
+            self._title_bar, text="□",
+            width=_ctrl_btn_w, height=_ctrl_btn_h,
+            font=ctk.CTkFont(size=16),
+            fg_color="transparent",
+            text_color=COLORS["sidebar_text"],
+            hover_color=COLORS["sidebar_hover"],
+            corner_radius=6,
             command=self._maximize_restore_window,
         )
-        self._btn_maximize.pack(side="right", padx=4, pady=_dot_pady)
+        self._btn_maximize.pack(side="right", pady=_ctrl_pady)
 
-        # 最小化 — 黄色
+        # 最小化
         self._btn_minimize = ctk.CTkButton(
-            self._title_bar, text="",
-            width=_dot_size, height=_dot_size,
-            fg_color="#FFBD2E",
-            hover_color="#FFCC5C",
-            corner_radius=_dot_radius,
+            self._title_bar, text="─",
+            width=_ctrl_btn_w, height=_ctrl_btn_h,
+            font=ctk.CTkFont(size=16),
+            fg_color="transparent",
+            text_color=COLORS["sidebar_text"],
+            hover_color=COLORS["sidebar_hover"],
+            corner_radius=6,
             command=self._minimize_window,
         )
-        self._btn_minimize.pack(side="right", padx=4, pady=_dot_pady)
+        self._btn_minimize.pack(side="right", pady=_ctrl_pady)
 
         # ── 底层容器 ──
         self._bottom_container = ctk.CTkFrame(self, fg_color=COLORS["bg"], corner_radius=0)
         self._bottom_container.pack(side="top", fill="both", expand=True)
 
-        # ── 窗口缩放手柄（右下角）──
-        self._resize_grip = ctk.CTkFrame(self, width=16, height=16,
-            fg_color="transparent", corner_radius=0, cursor="sizing")
-        self._resize_grip.place(relx=1.0, rely=1.0, anchor="se")
-        self._resize_grip.bind("<Button-1>", self._start_resize)
-        self._resize_grip.bind("<B1-Motion>", self._on_resize)
+        # ── 窗口边缘缩放（所有边+角均可拖拽）──
+        self._resize_margin = 6  # 边缘检测像素
+        self._resize_edge = None  # 当前调整的边：n/s/e/w/ne/nw/se/sw
+        self.bind("<Motion>", self._on_resize_motion)
+        self.bind("<Button-1>", self._on_resize_press)
+        self.bind("<B1-Motion>", self._on_resize_drag)
+        self.bind("<ButtonRelease-1>", self._on_resize_release)
 
         # 加载导航栏图标（线性版 + 选中实心版）
         self._nav_icon_images = {}         # 线性（未选中）

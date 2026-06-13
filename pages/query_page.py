@@ -52,7 +52,7 @@ class QueryPage(ctk.CTkFrame):
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
-            btn_frame, text="📤 导出Excel", width=110, height=34,
+            btn_frame, text="导出", width=80, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold"),
             command=self._export_xlsx, corner_radius=20

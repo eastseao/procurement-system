@@ -12,8 +12,8 @@ import threading
 import ssl
 from datetime import datetime
 
-__version__ = "2.2.3"
-__version_date__ = "2026-06-12"
+__version__ = "2.2.6"
+__version_date__ = "2026-06-13"
 
 # ═══════════════════════════════════════════════════════
 # GitHub 仓库信息（上传后请修改为你的实际仓库地址）
@@ -55,13 +55,18 @@ def get_latest_release():
             tag_name = data.get("tag_name", "").lstrip("v")
             html_url = data.get("html_url", "")
             body = data.get("body", "")
-            # 获取第一个 .exe 资产的下载地址
+            # 优先获取 Setup.exe 安装包，其次普通 EXE
             assets = data.get("assets", [])
             asset_url = None
             for a in assets:
-                if a.get("name", "").endswith(".exe"):
-                    asset_url = a.get("browser_download_url")
-                    break
+                name = a.get("name", "")
+                if name.endswith(".exe"):
+                    url = a.get("browser_download_url")
+                    if "Setup" in name or "_Setup" in name:
+                        asset_url = url  # 优先安装包
+                        break
+                    if not asset_url:
+                        asset_url = url  # 备用：普通 EXE
             return tag_name, html_url, body, asset_url
             
     except urllib.error.HTTPError as e:

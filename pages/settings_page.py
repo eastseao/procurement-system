@@ -532,25 +532,6 @@ class SettingsPage(ctk.CTkFrame):
         )
         self.backup_status_label.pack(anchor="w", padx=20, pady=(8, 4))
 
-        # ── 恢复默认设置 ──
-        sep = tk.Frame(card, height=1, bg=self.C["divider"])
-        sep.pack(fill="x", padx=20, pady=(16, 12))
-
-        ctk.CTkLabel(card, text="重置为默认设置",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=16, weight="bold"),
-                     text_color=self.C["text"]).pack(anchor="w", padx=20, pady=(0, 8))
-
-        ctk.CTkLabel(card,
-                     text="将窗口大小、筛选条件、表列宽等恢复到初始状态",
-                     font=ctk.CTkFont(family="Microsoft YaHei", size=12),
-                     text_color=self.C["text_secondary"]).pack(anchor="w", padx=20, pady=(0, 12))
-
-        ctk.CTkButton(
-            card, text="🔄 恢复默认设置", width=160, height=34,
-            fg_color="#C9A96E", hover_color="#B8985E",
-            font=ctk.CTkFont(size=13),
-            command=self._reset_to_defaults, corner_radius=20,
-        ).pack(anchor="w", padx=28)
 
         # 保存按钮
         self._add_save_button()
@@ -628,23 +609,6 @@ class SettingsPage(ctk.CTkFrame):
             self.backup_status_label.configure(text="✅ 数据库恢复成功，请重启软件")
         except Exception as e:
             messagebox.showerror("恢复失败", f"恢复数据库失败：\n{e}")
-
-    def _reset_to_defaults(self):
-        """恢复默认设置"""
-        if not messagebox.askyesno("确认重置",
-            "将恢复以下设置为默认值：\n\n• 窗口大小和位置\n• 表格列宽\n• 筛选条件\n\n是否继续？"):
-            return
-
-        try:
-            # 清除窗口位置/大小相关设置
-            for key in ["window_width", "window_height", "window_x", "window_y"]:
-                self.settings.pop(key, None)
-
-            # 保存
-            save_settings(self.settings)
-            messagebox.showinfo("重置成功", "已恢复默认设置！\n\n请重启软件生效。")
-        except Exception as e:
-            messagebox.showerror("重置失败", f"重置失败：{e}")
 
     def _build_version_info(self):
         """构建软件介绍内容"""

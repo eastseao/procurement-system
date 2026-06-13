@@ -56,35 +56,35 @@ class QuotationPage(ctk.CTkFrame):
         btn_frame.pack(side="right", pady=8)
 
         ctk.CTkButton(
-            btn_frame, text="👁 预览报价单", width=120, height=34,
+            btn_frame, text="预览", width=80, height=34,
             fg_color="#8B7355", hover_color="#6B5B45",
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._preview_quotation, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
-            btn_frame, text="📤 导出报价单", width=120, height=34,
+            btn_frame, text="导出", width=80, height=34,
             fg_color=self.C["success"], hover_color="#7A9A6E",
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._export_quotation, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
-            btn_frame, text="+供方信息", width=100, height=34,
+            btn_frame, text="+供方", width=80, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=14),
             command=self._open_supplier_config, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
-            btn_frame, text="⚙ 需方配置", width=100, height=34,
+            btn_frame, text="需方", width=80, height=34,
             fg_color="#6B7280", hover_color="#4B5563",
             font=ctk.CTkFont(size=14),
             command=self._open_config, corner_radius=20,
         ).pack(side="right", padx=4)
 
         ctk.CTkButton(
-            btn_frame, text="＋ 添加产品", width=110, height=34,
+            btn_frame, text="添加", width=80, height=34,
             fg_color=self.C["danger"], hover_color="#A85A5A",
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._open_form, corner_radius=20,
@@ -470,16 +470,16 @@ class QuotationPage(ctk.CTkFrame):
     # ══════════════════════════════════════════════
 
     def _open_supplier_manage(self):
-        """打开供应商管理弹窗 — 列表展示 + 删除"""
+        """打开供应商管理弹窗 — 列表展示 + 编辑 + 删除"""
         try:
-            suppliers = self.db.get_all_quotation_suppliers()
-            if not suppliers:
+            self._suppliers_cache = self.db.get_all_quotation_suppliers()
+            if not self._suppliers_cache:
                 messagebox.showinfo("提示", "暂无供应商数据")
                 return
 
             dlg = ctk.CTkToplevel(self)
             dlg.title("供应商管理")
-            dlg.geometry("700x500")
+            dlg.geometry("750x550")
             dlg.configure(fg_color=self.C["bg"])
             dlg.transient(self)
             dlg.grab_set()
@@ -488,87 +488,203 @@ class QuotationPage(ctk.CTkFrame):
             dlg.update_idletasks()
             sw = dlg.winfo_screenwidth()
             sh = dlg.winfo_screenheight()
-            dlg.geometry(f"700x500+{(sw-700)//2}+{(sh-500)//2}")
+            dlg.geometry(f"750x550+{(sw-750)//2}+{(sh-550)//2}")
 
             # 标题
             ctk.CTkLabel(
-                dlg, text="🗑  供应商管理",
+                dlg, text="供应商管理",
                 font=ctk.CTkFont(family="Microsoft YaHei", size=20, weight="bold"),
                 text_color=self.C["text"],
             ).pack(pady=(16, 8))
 
-            ctk.CTkLabel(
-                dlg, text=f"共 {len(suppliers)} 个供应商",
+            self._supplier_manage_count = ctk.CTkLabel(
+                dlg, text="",
                 font=ctk.CTkFont(size=13),
                 text_color=self.C.get("text_secondary", "#8B7355"),
-            ).pack(pady=(0, 8))
+            )
+            self._supplier_manage_count.pack(pady=(0, 8))
 
-            # 可滚动列表
-            scroll_frame = WheelScrollFrame(dlg, fg_color=self.C["card"], corner_radius=8)
+            # 可滚动列表 — 使用 CTkScrollableFrame 确保可靠渲染
+            scroll_frame = ctk.CTkScrollableFrame(dlg, fg_color=self.C["card"], corner_radius=8)
             scroll_frame.pack(fill="both", expand=True, padx=24, pady=(0, 12))
 
-            for i, s in enumerate(suppliers):
-                row = ctk.CTkFrame(scroll_frame, fg_color="transparent", height=44)
-                row.pack(fill="x", padx=8, pady=2)
-                row.pack_propagate(False)
+            self._supplier_manage_list = scroll_frame
+            self._supplier_manage_dlg = dlg
 
-                idx_label = ctk.CTkLabel(
-                    row, text=f"{i+1}.", width=30,
-                    font=ctk.CTkFont(size=13),
-                    text_color=self.C.get("text_secondary", "#8B7355"),
-                )
-                idx_label.pack(side="left", padx=(4, 8), pady=10)
-
-                info = f"{s.get('supplier_name', '')}"
-                contact = s.get("contact_person", "")
-                if contact:
-                    info += f"  |  {contact}"
-                phone = s.get("phone", "")
-                if phone:
-                    info += f"  |  {phone}"
-
-                ctk.CTkLabel(
-                    row, text=info, anchor="w",
-                    font=ctk.CTkFont(size=14),
-                    text_color=self.C["text"],
-                ).pack(side="left", fill="x", expand=True, pady=10)
-
-                sid = s.get("id")
-                def make_delete(rid=sid, rrow=row, rname=s.get("supplier_name", "")):
-                    def _del():
-                        if messagebox.askyesno("删除确认", f"确定删除供应商「{rname}」？\n此操作不可恢复。", icon="warning"):
-                            try:
-                                self.db.delete_quotation_supplier_record(rid)
-                                rrow.destroy()
-                                self._refresh_supplier_combo()
-                                # 如果删除的是当前选中供应商，清空
-                                if self._pending_supplier.get("id") == rid:
-                                    self._pending_supplier = {}
-                                    self.supplier_var.set("")
-                                    self._update_stats()
-                            except Exception as e:
-                                messagebox.showerror("删除失败", str(e))
-                    return _del
-
-                del_btn = ctk.CTkButton(
-                    row, text="删除", width=60, height=30,
-                    fg_color=self.C["danger"], hover_color="#9A5555",
-                    font=ctk.CTkFont(size=13),
-                    command=make_delete(), corner_radius=20,
-                )
-                del_btn.pack(side="right", padx=4, pady=10)
-
-            # 底部关闭按钮
-            ctk.CTkButton(
-                dlg, text="关闭", width=100, height=36,
-                fg_color="#6B7280", hover_color="#4B5563",
-                font=ctk.CTkFont(size=14),
-                command=dlg.destroy, corner_radius=20,
-            ).pack(pady=(0, 16))
-
+            self._refresh_supplier_manage_list()
         except Exception as e:
             import traceback
             messagebox.showerror("打开管理失败", f"{e}\n\n{traceback.format_exc()}")
+
+    def _refresh_supplier_manage_list(self):
+        """刷新供应商管理列表"""
+        scroll_frame = self._supplier_manage_list
+        # 清空现有子组件
+        for w in scroll_frame.winfo_children():
+            w.destroy()
+
+        suppliers = self._suppliers_cache
+
+        # 更新计数
+        self._supplier_manage_count.configure(text=f"共 {len(suppliers)} 个供应商")
+
+        if not suppliers:
+            ctk.CTkLabel(
+                scroll_frame, text="暂无供应商",
+                font=ctk.CTkFont(size=14),
+                text_color=self.C.get("text_secondary", "#8B7355"),
+            ).pack(pady=20)
+            return
+
+        for i, s in enumerate(suppliers):
+            row = ctk.CTkFrame(scroll_frame, fg_color="transparent", height=48)
+            row.pack(fill="x", padx=8, pady=3)
+            row.pack_propagate(False)
+
+            ctk.CTkLabel(
+                row, text=f"{i+1}.", width=30,
+                font=ctk.CTkFont(size=13),
+                text_color=self.C.get("text_secondary", "#8B7355"),
+            ).pack(side="left", padx=(4, 8), pady=12)
+
+            info = f"{s.get('supplier_name', '')}"
+            contact = s.get("contact_person", "")
+            if contact:
+                info += f"  |  {contact}"
+            phone = s.get("phone", "")
+            if phone:
+                info += f"  |  {phone}"
+
+            ctk.CTkLabel(
+                row, text=info, anchor="w",
+                font=ctk.CTkFont(size=14),
+                text_color=self.C["text"],
+            ).pack(side="left", fill="x", expand=True, pady=12)
+
+            sid = s.get("id")
+            rname = s.get("supplier_name", "")
+
+            # 删除按钮
+            def make_delete(rid=sid, rrow=row):
+                def _del():
+                    if messagebox.askyesno("删除确认", f"确定删除该供应商？\n此操作不可恢复。", icon="warning"):
+                        try:
+                            self.db.delete_quotation_supplier_record(rid)
+                            # 更新缓存
+                            self._suppliers_cache = [x for x in self._suppliers_cache if x.get("id") != rid]
+                            rrow.destroy()
+                            self._refresh_supplier_combo()
+                            if self._pending_supplier.get("id") == rid:
+                                self._pending_supplier = {}
+                                self.supplier_var.set("")
+                                self._update_stats()
+                            # 刷新计数
+                            self._supplier_manage_count.configure(
+                                text=f"共 {len(self._suppliers_cache)} 个供应商")
+                        except Exception as e:
+                            messagebox.showerror("删除失败", str(e))
+                return _del
+
+            del_btn = ctk.CTkButton(
+                row, text="删除", width=55, height=30,
+                fg_color=self.C["danger"], hover_color="#9A5555",
+                font=ctk.CTkFont(size=13),
+                command=make_delete(), corner_radius=20,
+            )
+            del_btn.pack(side="right", padx=4, pady=12)
+
+            # 编辑按钮
+            def make_edit(rid=sid, rdata={k: v for k, v in s.items()}):
+                def _edit():
+                    self._open_supplier_edit(rid, rdata)
+                return _edit
+
+            edit_btn = ctk.CTkButton(
+                row, text="编辑", width=55, height=30,
+                fg_color=self.C.get("primary", "#7B9B7C"),
+                hover_color=self.C.get("primary_hover", "#5F7F5F"),
+                font=ctk.CTkFont(size=13),
+                command=make_edit(), corner_radius=20,
+            )
+            edit_btn.pack(side="right", padx=4, pady=12)
+
+    def _open_supplier_edit(self, sid, data):
+        """打开供应商编辑弹窗"""
+        edit_dlg = ctk.CTkToplevel(self._supplier_manage_dlg)
+        edit_dlg.title("编辑供应商")
+        edit_dlg.geometry("500x400")
+        edit_dlg.configure(fg_color=self.C["bg"])
+        edit_dlg.transient(self._supplier_manage_dlg)
+        edit_dlg.grab_set()
+
+        edit_dlg.update_idletasks()
+        sw = edit_dlg.winfo_screenwidth()
+        sh = edit_dlg.winfo_screenheight()
+        edit_dlg.geometry(f"500x400+{(sw-500)//2}+{(sh-400)//2}")
+
+        ctk.CTkLabel(
+            edit_dlg, text="编辑供应商信息",
+            font=ctk.CTkFont(family="Microsoft YaHei", size=18, weight="bold"),
+            text_color=self.C["text"],
+        ).pack(pady=(20, 12))
+
+        form = ctk.CTkFrame(edit_dlg, fg_color=self.C["card"], corner_radius=self.C["radius_card"])
+        form.pack(fill="both", expand=True, padx=24, pady=(0, 12))
+
+        fields = {}
+        field_defs = [
+            ("供应商名称", "supplier_name"),
+            ("联系人", "contact_person"),
+            ("联系方式", "phone"),
+            ("地址", "address"),
+        ]
+
+        for label, key in field_defs:
+            r = ctk.CTkFrame(form, fg_color="transparent")
+            r.pack(fill="x", padx=16, pady=5)
+            ctk.CTkLabel(r, text=label, width=80, anchor="w",
+                         font=ctk.CTkFont(size=14)).pack(side="left")
+            ent = ctk.CTkEntry(r, height=32, font=ctk.CTkFont(size=14))
+            ent.pack(side="left", fill="x", expand=True, padx=(8, 0))
+            ent.insert(0, data.get(key, ""))
+            fields[key] = ent
+
+        btn_frame = ctk.CTkFrame(edit_dlg, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=24, pady=(0, 20))
+
+        def _save():
+            new_data = {}
+            for key, ent in fields.items():
+                new_data[key] = ent.get().strip()
+            if not new_data.get("supplier_name"):
+                messagebox.showerror("错误", "供应商名称不能为空")
+                return
+            try:
+                self.db.update_quotation_supplier_record(sid, new_data)
+                # 更新缓存
+                for s in self._suppliers_cache:
+                    if s.get("id") == sid:
+                        s.update(new_data)
+                        break
+                edit_dlg.destroy()
+                self._refresh_supplier_manage_list()
+                self._refresh_supplier_combo()
+            except Exception as e:
+                messagebox.showerror("保存失败", str(e))
+
+        ctk.CTkButton(
+            btn_frame, text="保存", width=80, height=36,
+            fg_color=self.C["primary"], hover_color=self.C["primary_hover"],
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=_save, corner_radius=20,
+        ).pack(side="right", padx=8)
+
+        ctk.CTkButton(
+            btn_frame, text="取消", width=80, height=36,
+            fg_color="#9CA3AF", hover_color="#6B7280",
+            font=ctk.CTkFont(size=14),
+            command=edit_dlg.destroy, corner_radius=20,
+        ).pack(side="right", padx=8)
 
     # ══════════════════════════════════════════════
     #  预览报价单

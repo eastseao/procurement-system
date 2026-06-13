@@ -245,7 +245,7 @@ class DashboardPage(ctk.CTkFrame):
 
         # ── 最新动态列表（使用 WheelScrollFrame 隐藏滚动条）──
         self.activity_frame = WheelScrollFrame(
-            left_col, fg_color="transparent",
+            left_col, fg_color=self.C["card"],
         )
         self.activity_frame.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
