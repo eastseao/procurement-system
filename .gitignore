@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+debug.log
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 安装包输出
+安装包/
+
+# Inno Setup 输出
+*.exe
+!dist/*.exe
+
+# Temp
+*.spec.bak

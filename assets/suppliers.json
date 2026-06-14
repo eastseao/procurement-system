@@ -1,0 +1,52 @@
+{
+    "suppliers": [
+        {
+            "id": 1,
+            "short_name": "北京兆兴",
+            "full_name": "北京兆兴纸制品有限责任公司",
+            "legal_rep": "",
+            "address": "北京市房山区琉璃河镇祖村村东200米",
+            "contact": "贾虎",
+            "auth_rep": "",
+            "phone": "15811073217",
+            "fax": "",
+            "payment_days": "90",
+            "payment_method": "电汇",
+            "account_name": "北京兆兴纸制品有限责任公司",
+            "bank": "交通银行北京万柳支行",
+            "account": "110061118018010026907"
+        },
+        {
+            "id": 2,
+            "short_name": "广州铭彩",
+            "full_name": "广州铭彩包装制品有限公司",
+            "legal_rep": "",
+            "address": "广州市白云区太和镇",
+            "contact": "",
+            "auth_rep": "",
+            "phone": "",
+            "fax": "",
+            "payment_days": "60",
+            "payment_method": "电汇",
+            "account_name": "广州铭彩包装制品有限公司",
+            "bank": "",
+            "account": ""
+        },
+        {
+            "id": 3,
+            "short_name": "温州诚德",
+            "full_name": "温州诚德包装有限公司",
+            "legal_rep": "",
+            "address": "浙江省温州市苍南县",
+            "contact": "",
+            "auth_rep": "",
+            "phone": "",
+            "fax": "",
+            "payment_days": "60",
+            "payment_method": "电汇",
+            "account_name": "温州诚德包装有限公司",
+            "bank": "",
+            "account": ""
+        }
+    ]
+}
