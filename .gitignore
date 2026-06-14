@@ -1,30 +1,43 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-dist/
+# PyInstaller
 build/
+dist/
+*.spec.bak
+*.pyc
+__pycache__/
+
+# Python
+*.py[cod]
+*.so
+*.egg-info/
 *.egg
+.eggs/
+*.manifest
+*.spec
 
 # IDE
 .vscode/
 .idea/
-
-# Logs
-debug.log
-*.log
+*.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# 安装包输出
-安装包/
+# Database (local data)
+*.db
+*.sqlite
+*.sqlite3
 
-# Inno Setup 输出
-*.exe
-!dist/*.exe
+# Temp files
+temp_version_info.txt
+patch_*.py
 
-# Temp
-*.spec.bak
+# Logs
+*.log
+
+# Cache
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
