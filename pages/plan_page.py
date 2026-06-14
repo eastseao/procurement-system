@@ -42,12 +42,12 @@ class PlanPage(ctk.CTkFrame):
             text_color="#000000",
         ).pack(side="left", padx=4)
 
-        # 导入PDF计划单按钮
+        # 导入文件按钮（PDF / Excel / CSV）
         ctk.CTkButton(
-            btn_frame, text="📄 导入PDF", width=110, height=34,
+            btn_frame, text="📄 导入文件", width=110, height=34,
             fg_color="transparent", hover_color="#7A9A6E",
             font=ctk.CTkFont(size=13),
-            command=self._import_pdf, corner_radius=8,
+            command=self._import_file, corner_radius=8,
             border_width=1, border_color=C["border"],
             text_color="#000000",
         ).pack(side="left", padx=4)
@@ -650,36 +650,279 @@ class PlanPage(ctk.CTkFrame):
             text_color="#000000",
         ).pack(side="right")
 
-    # ── 导入PDF计划单 ───────────────────────────────────
-    def _import_pdf(self):
-        """导入PDF计划单，自动提取物料信息"""
+    # ── 导入文件（PDF / Excel / CSV）─────────────────────
+    def _import_file(self):
+        """导入计划文件：支持 PDF、Excel(.xlsx/.xls)、CSV"""
         filepath = filedialog.askopenfilename(
-            title="选择PDF计划单",
-            filetypes=[("PDF文件", "*.pdf")],
+            title="选择计划文件",
+            filetypes=[
+                ("所有支持的文件", "*.pdf;*.xlsx;*.xls;*.csv"),
+                ("PDF文件", "*.pdf"),
+                ("Excel文件", "*.xlsx;*.xls"),
+                ("CSV文件", "*.csv"),
+            ],
         )
         if not filepath:
             return
 
+        ext = os.path.splitext(filepath)[1].lower()
+
         try:
-            extracted = self._parse_plan_pdf(filepath)
+            if ext == ".pdf":
+                extracted = self._parse_plan_pdf(filepath)
+                title_prefix = "PDF"
+            elif ext in (".xlsx", ".xls"):
+                extracted = self._parse_plan_excel(filepath)
+                title_prefix = "Excel"
+            elif ext == ".csv":
+                extracted = self._parse_plan_csv(filepath)
+                title_prefix = "CSV"
+            else:
+                messagebox.showerror("不支持", f"不支持的文件格式：{ext}")
+                return
         except Exception as e:
-            messagebox.showerror("导入失败", f"PDF解析失败：\n{e}")
+            messagebox.showerror("导入失败", f"文件解析失败：\n{e}")
             return
 
         if not extracted:
-            messagebox.showinfo("提示", "未从PDF中提取到物料信息，请检查文件格式。")
+            messagebox.showinfo("提示", "未从文件中提取到物料信息，请检查文件格式。")
             return
 
-        self._show_pdf_preview(filepath, extracted)
+        self._show_import_preview(filepath, extracted, title_prefix)
+
+    def _parse_plan_excel(self, filepath):
+        """解析Excel表格，按表头匹配字段提取物料信息"""
+        items = []
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(filepath, data_only=True)
+            ws = wb.active
+
+            rows_data = []
+            for row in ws.iter_rows(values_only=True):
+                rows_data.append([str(c).strip() if c is not None else "" for c in row])
+
+            items = self._parse_table_rows(rows_data)
+            wb.close()
+        except ImportError:
+            raise Exception("缺少openpyxl库，请执行: pip install openpyxl")
+        except Exception as e:
+            # 尝试用 xlrd 读取旧版 .xls
+            if str(e).startswith("缺少"):
+                raise
+            try:
+                import xlrd
+                wb = xlrd.open_workbook(filepath)
+                ws = wb.sheet_by_index(0)
+                rows_data = []
+                for r in range(ws.nrows):
+                    rows_data.append([str(ws.cell_value(r, c)).strip() if ws.cell_value(r, c) else "" for c in range(ws.ncols)])
+                items = self._parse_table_rows(rows_data)
+            except ImportError:
+                raise Exception("缺少xlrd库，请执行: pip install xlrd")
+            except Exception:
+                raise e
+
+        return items
+
+    def _parse_plan_csv(self, filepath):
+        """解析CSV表格，按表头匹配字段提取物料信息"""
+        import csv
+        rows_data = []
+        # 尝试多种编码
+        for encoding in ("utf-8-sig", "utf-8", "gbk", "gb2312"):
+            try:
+                with open(filepath, "r", encoding=encoding) as f:
+                    reader = csv.reader(f)
+                    rows_data = [row for row in reader]
+                break
+            except (UnicodeDecodeError, Exception):
+                continue
+
+        if not rows_data:
+            raise Exception("无法解析CSV文件，请检查文件编码（支持 UTF-8 / GBK）")
+
+        return self._parse_table_rows(rows_data)
+
+    def _parse_table_rows(self, rows_data):
+        """通用表格行解析：按表头匹配字段，提取物料信息（PDF表格/Excel/CSV共用）"""
+        items = []
+        if not rows_data:
+            return items
+
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+        approval_no = ""
+        expected_delivery = ""
+        reason = ""
+
+        # 先扫描全文提取审批编号和期望交付日期
+        full_text = "\n".join([" ".join(r) for r in rows_data])
+        m_no = re.search(r'审批编号[：:\s]*(\S+)', full_text)
+        if m_no:
+            approval_no = m_no.group(1)
+        m_deliv = re.search(r'期望交付日期[：:\s]*(\d{4}[-/]\d{1,2}[-/]\d{1,2})', full_text)
+        if m_deliv:
+            expected_delivery = m_deliv.group(1).replace('/', '-')
+        m_reason = re.search(r'申请事由[：:\s]*([^\n]+)', full_text)
+        if m_reason:
+            reason = m_reason.group(1).strip()
+
+        # ── 表头匹配 ──
+        header_row_idx = -1
+        col_map = {}
+
+        for ri, row in enumerate(rows_data):
+            if not row or all(not c for c in row):
+                continue
+            header_texts = [c.replace('\n', ' ').replace(' ', '') for c in row]
+
+            has_material = any(
+                kw in h for h in header_texts
+                for kw in ["物料名称", "名称", "品名", "物料", "产品名称", "货品名称"]
+            )
+            has_qty = any(
+                kw in h for h in header_texts
+                for kw in ["数量", "采购数量", "计划数量"]
+            )
+
+            if has_material and has_qty:
+                header_row_idx = ri
+                for ci, h in enumerate(header_texts):
+                    # 采购明细序号
+                    if any(kw in h for kw in ["序号", "项次", "明细序号"]):
+                        col_map["item_seq"] = ci
+                    # 审批编号
+                    if "审批编号" in h:
+                        col_map["approval_no"] = ci
+                    # 物料名称
+                    if any(kw in h for kw in ["物料名称", "名称", "品名", "物料", "产品名称", "货品名称"]):
+                        col_map["material_name"] = ci
+                    # 规格
+                    elif any(kw in h for kw in ["规格", "型号"]):
+                        col_map["spec"] = ci
+                    # 数量
+                    elif any(kw in h for kw in ["数量", "采购数量", "计划数量"]):
+                        col_map["quantity"] = ci
+                    # 单位
+                    elif "单位" in h:
+                        col_map["unit"] = ci
+                    # 单价
+                    elif any(kw in h for kw in ["单价", "价格", "含税单价"]):
+                        col_map["unit_price"] = ci
+                    # 金额
+                    elif any(kw in h for kw in ["金额", "总价", "合计金额", "小计"]):
+                        col_map["amount"] = ci
+                    # 期望交付日期
+                    elif any(kw in h for kw in ["期望交付", "交付日期", "交货日期", "到货日期"]):
+                        col_map["expected_delivery"] = ci
+                    # 备注
+                    elif "备注" in h or "说明" in h:
+                        col_map["remark"] = ci
+                break
+
+            # 放宽条件：有物料+规格/数量的组合
+            if header_row_idx < 0 and has_material and any(
+                kw in h for h in header_texts
+                for kw in ["规格", "型号", "数量", "采购数量", "计划数量"]
+            ):
+                header_row_idx = ri
+                for ci, h in enumerate(header_texts):
+                    if any(kw in h for kw in ["序号", "项次", "明细序号"]):
+                        col_map["item_seq"] = ci
+                    if "审批编号" in h:
+                        col_map["approval_no"] = ci
+                    if any(kw in h for kw in ["物料名称", "名称", "品名", "物料", "产品名称", "货品名称"]):
+                        col_map["material_name"] = ci
+                    elif any(kw in h for kw in ["规格", "型号"]):
+                        col_map["spec"] = ci
+                    elif any(kw in h for kw in ["数量", "采购数量", "计划数量"]):
+                        col_map["quantity"] = ci
+                    elif "单位" in h:
+                        col_map["unit"] = ci
+                    elif any(kw in h for kw in ["单价", "价格", "含税单价"]):
+                        col_map["unit_price"] = ci
+                    elif any(kw in h for kw in ["金额", "总价", "合计金额", "小计"]):
+                        col_map["amount"] = ci
+                    elif any(kw in h for kw in ["期望交付", "交付日期", "交货日期", "到货日期"]):
+                        col_map["expected_delivery"] = ci
+                    elif "备注" in h or "说明" in h:
+                        col_map["remark"] = ci
+
+        if header_row_idx < 0 or not col_map:
+            return items
+
+        # ── 遍历数据行 ──
+        for ri in range(header_row_idx + 1, len(rows_data)):
+            row = rows_data[ri]
+            if not row or all(not c for c in row):
+                continue
+            first_cell = row[0].strip() if row[0] else ""
+            if "合计" in first_cell or "总计" in first_cell or "小计" in first_cell:
+                continue
+            # 跳过可能的二级表头
+            if any("物料名称" in c or "名称" == c.strip() for c in row):
+                continue
+
+            def _get_val(ci):
+                if ci is not None and ci < len(row) and row[ci]:
+                    return str(row[ci]).strip().replace(',', '').replace('，', '')
+                return ""
+
+            name = _get_val(col_map.get("material_name"))
+            if not name:
+                continue
+
+            item_seq = _get_val(col_map.get("item_seq"))
+            spec = _get_val(col_map.get("spec"))
+            qty_str = _get_val(col_map.get("quantity"))
+            unit = _get_val(col_map.get("unit"))
+            price_str = _get_val(col_map.get("unit_price"))
+            amt_str = _get_val(col_map.get("amount"))
+            row_expected = _get_val(col_map.get("expected_delivery"))
+            row_remark = _get_val(col_map.get("remark"))
+
+            try:
+                qty = float(qty_str) if qty_str else 0
+            except ValueError:
+                qty = 0
+            try:
+                price = float(price_str) if price_str else 0
+            except ValueError:
+                price = 0
+            try:
+                amount = float(amt_str) if amt_str else qty * price
+            except ValueError:
+                amount = qty * price
+
+            final_remark = f"审批编号:{approval_no} 事由:{reason}" if approval_no else reason
+            if row_remark:
+                final_remark = row_remark + " | " + final_remark if final_remark else row_remark
+
+            items.append({
+                "approval_no": approval_no,
+                "item_seq": item_seq,
+                "material_name": name,
+                "spec": spec,
+                "quantity": qty,
+                "unit": unit,
+                "unit_price": price,
+                "amount": amount,
+                "expected_delivery": expected_delivery or row_expected,
+                "remark": final_remark,
+                "submitted_at": now_str,
+                "approved_at": now_str,
+            })
+
+        return items
 
     def _parse_plan_pdf(self, filepath):
-        """解析PDF计划单，根据PDF表头列提取采购明细，智能匹配字段"""
+        """解析PDF计划单，优先用表格解析，回退到文本解析"""
         items = []
         try:
             import pdfplumber
             with pdfplumber.open(filepath) as pdf:
                 full_text = ""
-                tables_data = []
+                all_table_rows = []
                 for page in pdf.pages:
                     t = page.extract_text()
                     if t:
@@ -687,193 +930,36 @@ class PlanPage(ctk.CTkFrame):
                     tables = page.extract_tables()
                     for tbl in tables:
                         if tbl:
-                            tables_data.extend(tbl)
+                            # 转为二维字符串列表
+                            for row in tbl:
+                                all_table_rows.append([str(c).strip() if c else "" for c in row])
 
-            if not full_text.strip() and not tables_data:
+            if not full_text.strip() and not all_table_rows:
                 return items
 
-            # 提取审批编号
-            approval_no = ""
-            m_no = re.search(r'审批编号[：:\s]*(\S+)', full_text)
-            if m_no:
-                approval_no = m_no.group(1)
-
-            # 提取期望交付日期
-            expected_delivery = ""
-            m_deliv = re.search(r'期望交付日期[：:\s]*(\d{4}[-/]\d{1,2}[-/]\d{1,2})', full_text)
-            if m_deliv:
-                expected_delivery = m_deliv.group(1).replace('/', '-')
-
-            # 提取申请事由
-            reason = ""
-            m_reason = re.search(r'申请事由[：:\s]*([^\n]+)', full_text)
-            if m_reason:
-                reason = m_reason.group(1).strip()
-
-            now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-            # ── 优先使用表格解析，增强表头匹配 ──
-            if tables_data:
-                for tbl in tables_data:
-                    header_row_idx = -1
-                    col_map = {}
-
-                    for ri, row in enumerate(tbl):
-                        if not row:
-                            continue
-                        header_texts = [str(c).strip().replace('\n', ' ') if c else "" for c in row]
-
-                        # 更全面的表头匹配逻辑
-                        has_material = any(
-                            kw in h for h in header_texts
-                            for kw in ["物料名称", "名称", "品名", "物料", "产品名称", "货品名称"]
-                        )
-                        has_spec = any(
-                            kw in h for h in header_texts
-                            for kw in ["规格", "型号", "尺寸"]
-                        )
-                        has_qty = any(
-                            kw in h for h in header_texts
-                            for kw in ["数量", "采购数量", "计划数量"]
-                        )
-                        has_seq = any(
-                            kw in h for h in header_texts
-                            for kw in ["序号", "项次", "明细序号", "采购明细序号", "采购明细"]
-                        )
-                        # 只要有物料名称 + 数量即可确认表头行
-                        if has_material and has_qty:
-                            header_row_idx = ri
-                            for ci, h in enumerate(header_texts):
-                                h_clean = h.replace(' ', '').replace('\n', '')
-                                # 采购明细序号
-                                if any(kw in h_clean for kw in ["序号", "项次", "明细序号"]):
-                                    col_map["item_seq"] = ci
-                                # 审批编号（可能在表头行）
-                                if "审批编号" in h_clean:
-                                    col_map["approval_no"] = ci
-                                # 物料名称
-                                if any(kw in h_clean for kw in ["物料名称", "名称", "品名", "物料", "产品名称", "货品名称"]):
-                                    col_map["material_name"] = ci
-                                # 规格
-                                elif any(kw in h_clean for kw in ["规格", "型号"]):
-                                    col_map["spec"] = ci
-                                # 数量
-                                elif any(kw in h_clean for kw in ["数量", "采购数量", "计划数量"]):
-                                    col_map["quantity"] = ci
-                                # 单位
-                                elif "单位" in h_clean:
-                                    col_map["unit"] = ci
-                                # 单价
-                                elif any(kw in h_clean for kw in ["单价", "价格", "含税单价"]):
-                                    col_map["unit_price"] = ci
-                                # 金额
-                                elif any(kw in h_clean for kw in ["金额", "总价", "合计金额", "小计"]):
-                                    col_map["amount"] = ci
-                                # 期望交付日期
-                                elif any(kw in h_clean for kw in ["期望交付", "交付日期", "交货日期", "到货日期"]):
-                                    col_map["expected_delivery"] = ci
-                                # 备注
-                                elif "备注" in h_clean or "说明" in h_clean:
-                                    col_map["remark"] = ci
-                            break
-
-                        # 放宽条件：也匹配只有物料+规格+数量的组合（数量可能在规格前）
-                        if header_row_idx < 0 and has_material and (has_spec or has_qty):
-                            header_row_idx = ri
-                            for ci, h in enumerate(header_texts):
-                                h_clean = h.replace(' ', '').replace('\n', '')
-                                if any(kw in h_clean for kw in ["序号", "项次", "明细序号"]):
-                                    col_map["item_seq"] = ci
-                                if "审批编号" in h_clean:
-                                    col_map["approval_no"] = ci
-                                if any(kw in h_clean for kw in ["物料名称", "名称", "品名", "物料", "产品名称", "货品名称"]):
-                                    col_map["material_name"] = ci
-                                elif any(kw in h_clean for kw in ["规格", "型号"]):
-                                    col_map["spec"] = ci
-                                elif any(kw in h_clean for kw in ["数量", "采购数量", "计划数量"]):
-                                    col_map["quantity"] = ci
-                                elif "单位" in h_clean:
-                                    col_map["unit"] = ci
-                                elif any(kw in h_clean for kw in ["单价", "价格", "含税单价"]):
-                                    col_map["unit_price"] = ci
-                                elif any(kw in h_clean for kw in ["金额", "总价", "合计金额", "小计"]):
-                                    col_map["amount"] = ci
-                                elif any(kw in h_clean for kw in ["期望交付", "交付日期", "交货日期", "到货日期"]):
-                                    col_map["expected_delivery"] = ci
-                                elif "备注" in h_clean or "说明" in h_clean:
-                                    col_map["remark"] = ci
-
-                    if header_row_idx >= 0 and col_map:
-                        for ri in range(header_row_idx + 1, len(tbl)):
-                            row = tbl[ri]
-                            if not row or all(not c or not str(c).strip() for c in row):
-                                continue
-                            first_cell = str(row[0]).strip() if row[0] else ""
-                            if "合计" in first_cell or "总计" in first_cell or "小计" in first_cell:
-                                continue
-                            # 跳过可能的二级表头
-                            first_texts = [str(c).strip() if c else "" for c in row]
-                            if any("物料名称" in ft or "名称" in ft for ft in first_texts):
-                                continue
-
-                            def _get_val(ci):
-                                if ci is not None and ci < len(row) and row[ci]:
-                                    return str(row[ci]).strip().replace(',', '').replace('，', '')
-                                return ""
-
-                            name = _get_val(col_map.get("material_name"))
-                            if not name:
-                                # 如果"名称"列没有值但其他列有数据，尝试从相邻列推断
-                                continue
-
-                            item_seq = _get_val(col_map.get("item_seq"))
-                            spec = _get_val(col_map.get("spec"))
-                            qty_str = _get_val(col_map.get("quantity"))
-                            unit = _get_val(col_map.get("unit"))
-                            price_str = _get_val(col_map.get("unit_price"))
-                            amt_str = _get_val(col_map.get("amount"))
-                            row_expected = _get_val(col_map.get("expected_delivery"))
-                            row_remark = _get_val(col_map.get("remark"))
-
-                            try:
-                                qty = float(qty_str) if qty_str else 0
-                            except ValueError:
-                                qty = 0
-                            try:
-                                price = float(price_str) if price_str else 0
-                            except ValueError:
-                                price = 0
-                            try:
-                                amount = float(amt_str) if amt_str else qty * price
-                            except ValueError:
-                                amount = qty * price
-
-                            # 合并备注
-                            final_remark = f"审批编号:{approval_no} 事由:{reason}" if approval_no else reason
-                            if row_remark:
-                                final_remark = row_remark + " | " + final_remark if final_remark else row_remark
-
-                            items.append({
-                                "approval_no": approval_no,
-                                "item_seq": item_seq,
-                                "material_name": name,
-                                "spec": spec,
-                                "quantity": qty,
-                                "unit": unit,
-                                "unit_price": price,
-                                "amount": amount,
-                                "expected_delivery": expected_delivery or row_expected,
-                                "remark": final_remark,
-                                "submitted_at": now_str,
-                                "approved_at": now_str,
-                            })
+            # ── 优先用通用表格解析 ──
+            if all_table_rows:
+                items = self._parse_table_rows(all_table_rows)
 
             # ── 回退到文本解析 ──
             if not items and full_text.strip():
+                approval_no = ""
+                expected_delivery = ""
+                reason = ""
+                m_no = re.search(r'审批编号[：:\s]*(\S+)', full_text)
+                if m_no:
+                    approval_no = m_no.group(1)
+                m_deliv = re.search(r'期望交付日期[：:\s]*(\d{4}[-/]\d{1,2}[-/]\d{1,2})', full_text)
+                if m_deliv:
+                    expected_delivery = m_deliv.group(1).replace('/', '-')
+                m_reason = re.search(r'申请事由[：:\s]*([^\n]+)', full_text)
+                if m_reason:
+                    reason = m_reason.group(1).strip()
+
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                 lines = full_text.split('\n')
                 for line in lines:
                     line = line.strip()
-                    # 匹配: 采购明细序号 + 名称 + 数量 + 单位 + 单价
                     m = re.search(
                         r'采购明细(\d+)\s+(.+?)\s+([\d,.]+)\s*(\S+)\s+([\d,.]+)',
                         line
@@ -924,10 +1010,10 @@ class PlanPage(ctk.CTkFrame):
 
         return items
 
-    def _show_pdf_preview(self, filepath, items):
-        """预览PDF提取结果并确认导入，每行后有删除按钮"""
+    def _show_import_preview(self, filepath, items, file_type="文件"):
+        """预览导入结果并确认导入，每行后有删除按钮"""
         preview = ctk.CTkToplevel(self)
-        preview.title("PDF导入预览")
+        preview.title(f"{file_type}导入预览")
         preview.geometry("960x600")
         preview.resizable(True, True)
         preview.minsize(780, 450)
@@ -947,7 +1033,7 @@ class PlanPage(ctk.CTkFrame):
         header.pack(fill="x", padx=20, pady=(16, 8))
 
         ctk.CTkLabel(
-            header, text="PDF计划单导入预览",
+            header, text=f"{file_type}计划单导入预览",
             font=ctk.CTkFont(size=17, weight="bold"),
             text_color=C["text"],
         ).pack(side="left")
