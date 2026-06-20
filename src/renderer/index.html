@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self';">
+  <title>采购助手</title>
+  <link rel="stylesheet" href="styles/theme.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/components.css">
+  <link rel="stylesheet" href="styles/pages.css">
+</head>
+<body class="theme-light">
+  <!-- ═══ 自定义标题栏 ═══ -->
+  <div id="title-bar">
+    <button id="btn-collapse" class="title-btn" title="折叠侧边栏">
+      <svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="4" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>
+    </button>
+    <span id="page-title">看板</span>
+    <div class="spacer"></div>
+    <button id="btn-minimize" class="title-btn" title="最小化">─</button>
+    <button id="btn-maximize" class="title-btn" title="最大化">□</button>
+    <button id="btn-close" class="title-btn title-btn-close" title="关闭">✕</button>
+  </div>
+
+  <!-- ═══ 底部容器 (侧边栏 + 主内容) ═══ -->
+  <div id="bottom-container">
+    <!-- 侧边栏 -->
+    <div id="sidebar">
+      <div id="nav-area">
+        <!-- 导航项由 JS 动态生成 -->
+      </div>
+      <div id="nav-bottom">
+        <div class="nav-separator"></div>
+        <div class="nav-item icon-only" data-page="settings" title="设置">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分隔线 -->
+    <div id="divider"></div>
+
+    <!-- 主内容区 -->
+    <div id="main-area">
+      <div id="page-content">
+        <!-- 页面内容由 JS 动态加载 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 模态弹窗容器 ═══ -->
+  <div id="modal-overlay" class="hidden">
+    <div id="modal-box">
+      <div id="modal-header">
+        <span id="modal-title"></span>
+        <button id="modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <div id="modal-body"></div>
+      <div id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Toast 消息容器 ═══ -->
+  <div id="toast-container"></div>
+
+  <!-- ═══ 右键菜单容器 ═══ -->
+  <div id="context-menu" class="hidden"></div>
+
+  <!-- ═══ 更新对话框 ═══ -->
+  <div id="update-dialog" class="hidden">
+    <div class="update-overlay"></div>
+    <div class="update-box">
+      <div class="update-header">
+        <h2>发现新版本！</h2>
+        <p id="update-subtitle"></p>
+      </div>
+      <div class="update-body">
+        <div class="update-version">
+          <span id="update-current-ver"></span>
+          <span class="update-arrow">→</span>
+          <span id="update-latest-ver"></span>
+        </div>
+        <div id="update-notes" class="update-notes"></div>
+      </div>
+      <div class="update-footer">
+        <button id="update-later" class="btn btn-secondary">暂不更新</button>
+        <button id="update-download" class="btn btn-primary">前往下载</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

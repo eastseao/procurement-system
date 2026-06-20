@@ -1,0 +1,87 @@
+{
+  "name": "procurement-system",
+  "version": "1.0.5",
+  "description": "采购管理系统 - Electron",
+  "author": "TRT",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:renderer": "node build-renderer.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.trt.procurement",
+    "productName": "采购助手",
+    "afterPack": "./build-hooks/afterPack.js",
+    "directories": {
+      "output": "dist_release"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon/app-icon-multi.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon/app-icon-multi.ico",
+      "uninstallerIcon": "assets/icon/app-icon-multi.ico",
+      "installerHeaderIcon": "assets/icon/app-icon-multi.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "采购助手",
+      "perMachine": false,
+      "differentialPackage": false,
+      "deleteAppDataOnUninstall": false,
+      "include": "build-hooks/installer.nsh"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.10",
+    "adm-zip": "^0.5.17",
+    "archiver": "^5.0.0",
+    "dayjs": "^1.8.34",
+    "exceljs": "^4.4.0",
+    "fast-csv": "^4.3.1",
+    "jszip": "^3.10.1",
+    "pdf-parse": "^1.1.1",
+    "readable-stream": "^3.6.0",
+    "saxes": "^5.0.1",
+    "sql.js": "^1.10.0",
+    "tmp": "^0.2.0",
+    "unzipper": "^0.10.11",
+    "uuid": "^8.3.0",
+    "xlsx": "^0.18.5"
+  }
+}

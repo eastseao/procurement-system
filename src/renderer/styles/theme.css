@@ -1,0 +1,161 @@
+/* ═══════════════════════════════════════════════════════
+   主题变量 - 经典蓝 & Win11 风格
+   ═══════════════════════════════════════════════════════ */
+
+/* ── 经典蓝 Light ── */
+:root, .theme-light {
+  --primary: #4A90E2;
+  --primary-hover: #3A7BC8;
+  --primary-light: #E8F2FC;
+  --success: #5B9279;
+  --warning: #E4A36A;
+  --danger: #B56A6A;
+  --bg: #F5F7FA;
+  --card: #FFFFFF;
+  --sidebar: #EEF2F7;
+  --sidebar-text: #2C3E50;
+  --sidebar-active: #D6E4F2;
+  --sidebar-active-text: #1A5490;
+  --sidebar-hover: #DCE5F0;
+  --text: #1F2937;
+  --text-secondary: #6B7280;
+  --border: #D1D5DB;
+  --divider: #E5E7EB;
+  --nav-group-bg: #D6E4F2;
+  --nav-indicator: #4A90E2;
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --radius-btn-secondary: 4px;
+  --radius-input: 6px;
+  --radius-modal: 16px;
+  --font-micro: 10px;
+  --font-body: 12px;
+  --font-subtitle: 14px;
+  --font-title: 20px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* ── 经典蓝 Dark ── */
+.theme-dark {
+  --primary: #4A90E2;
+  --primary-hover: #5BA0F2;
+  --primary-light: #1E2D3D;
+  --success: #5B9279;
+  --warning: #E4A36A;
+  --danger: #B56A6A;
+  --bg: #0F1419;
+  --card: #1A2027;
+  --sidebar: #161C23;
+  --sidebar-text: #E5E7EB;
+  --sidebar-active: #1E2D3D;
+  --sidebar-active-text: #5BA0F2;
+  --sidebar-hover: #1F2832;
+  --text: #E5E7EB;
+  --text-secondary: #9CA3AF;
+  --border: #2D3748;
+  --divider: #1F2832;
+  --nav-group-bg: #1E2D3D;
+  --nav-indicator: #4A90E2;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+/* ── Win11 Light ── */
+.theme-win11-light {
+  --primary: #0078D4;
+  --primary-hover: #106EBE;
+  --primary-light: #EAF6FD;
+  --success: #107C10;
+  --warning: #FFA500;
+  --danger: #D13438;
+  --bg: #FAFAFA;
+  --card: #FFFFFF;
+  --sidebar: #F3F3F3;
+  --sidebar-text: #1F1F1F;
+  --sidebar-active: #E5E5E5;
+  --sidebar-active-text: #0078D4;
+  --sidebar-hover: #EDEDED;
+  --text: #1F1F1F;
+  --text-secondary: #605E5C;
+  --border: #E5E5E5;
+  --divider: #EDEBE9;
+  --nav-group-bg: #E5E5E5;
+  --nav-indicator: #0078D4;
+  --radius-card: 8px;
+  --radius-btn: 4px;
+  --radius-input: 4px;
+  --radius-modal: 8px;
+}
+
+/* ── Win11 Dark ── */
+.theme-win11-dark {
+  --primary: #4CC2FF;
+  --primary-hover: #5CCBFF;
+  --primary-light: #1E2A30;
+  --success: #6CCB5F;
+  --warning: #FFB900;
+  --danger: #F1707A;
+  --bg: #202020;
+  --card: #2C2C2C;
+  --sidebar: #1C1C1C;
+  --sidebar-text: #FFFFFF;
+  --sidebar-active: #383838;
+  --sidebar-active-text: #4CC2FF;
+  --sidebar-hover: #2A2A2A;
+  --text: #FFFFFF;
+  --text-secondary: #A19F9D;
+  --border: #3F3F3F;
+  --divider: #2A2A2A;
+  --nav-group-bg: #383838;
+  --nav-indicator: #4CC2FF;
+  --radius-card: 8px;
+  --radius-btn: 4px;
+  --radius-input: 4px;
+  --radius-modal: 8px;
+}
+
+/* ── 全局重置 ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: "Microsoft YaHei", "微软雅黑", "Segoe UI", sans-serif;
+  font-size: var(--font-body);
+  color: var(--text);
+  background: var(--bg);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── 窗口圆角 ── */
+/* 投影已移除，仅保留圆角 */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}

@@ -1,0 +1,168 @@
+/* ═══════════════════════════════════════════════════════
+   布局框架 - 标题栏 + 侧边栏 + 内容区
+   ═══════════════════════════════════════════════════════ */
+
+/* ── 标题栏 ── */
+#title-bar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 4px;
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--divider);
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+  border-radius: 16px 16px 0 0;
+}
+
+#title-bar .title-btn {
+  -webkit-app-region: no-drag;
+  width: 46px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--sidebar-text);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+#title-bar .title-btn:hover {
+  background: var(--sidebar-hover);
+}
+
+#title-bar .title-btn-close:hover {
+  background: #E81123;
+  color: white;
+}
+
+#title-bar .spacer {
+  flex: 1;
+}
+
+#page-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--sidebar-text);
+  padding: 0 8px;
+}
+
+/* ── 底部容器 ── */
+#bottom-container {
+  display: flex;
+  flex: 1;
+  height: calc(100% - 40px);
+  overflow: hidden;
+  border-radius: 0 0 16px 16px;
+  background: var(--bg);
+}
+
+/* ── 侧边栏 ── */
+#sidebar {
+  width: 88px;
+  min-width: 88px;
+  background: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 0 0 0 16px;
+}
+
+#sidebar.collapsed {
+  display: none;
+}
+
+#nav-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+#nav-bottom {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+.nav-separator {
+  height: 1px;
+  background: var(--divider);
+  margin: 4px 8px;
+}
+
+/* ── 导航项 ── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px;
+  margin: 2px 0;
+  border-radius: var(--radius-btn-secondary);
+  color: var(--sidebar-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  height: 36px;
+  white-space: nowrap;
+}
+
+.nav-item:hover {
+  background: var(--sidebar-hover);
+}
+
+.nav-item.active {
+  background: var(--sidebar-active);
+  color: var(--sidebar-active-text);
+}
+
+.nav-item.active svg {
+  stroke: var(--sidebar-active-text);
+}
+
+.nav-item.icon-only {
+  justify-content: center;
+  padding: 8px;
+  height: 36px;
+  width: 36px;
+  align-self: center;
+}
+
+.nav-item svg {
+  flex-shrink: 0;
+  stroke: var(--sidebar-text);
+}
+
+/* ── 分隔线 ── */
+#divider {
+  width: 1px;
+  min-width: 1px;
+  background: var(--border);
+}
+
+#divider.hidden {
+  display: none;
+}
+
+/* ── 主内容区 ── */
+#main-area {
+  flex: 1;
+  padding: 12px;
+  overflow: hidden;
+  display: flex;
+}
+
+#page-content {
+  flex: 1;
+  background: var(--card);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+}
